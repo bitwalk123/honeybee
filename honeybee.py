@@ -57,6 +57,7 @@ if __name__ == "__main__":
     env_train.save(file_pkl)
 
     # ====== 報酬トレンド/学習曲線 ======
+
     # 最初の行の読み込みを除外
     df_reward = pd.read_csv(file_log, skiprows=[0])
     learning_curve(df_reward, file_csv)

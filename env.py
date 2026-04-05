@@ -23,6 +23,7 @@ class TrainingEnv(gym.Env):
         self.render_mode = render_mode
 
         # 報酬関連
+        self.pnl_total = 0
         self.ratio_profit_hold = 0.1  # HOLD 時の含み損益から報酬
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
@@ -35,7 +36,6 @@ class TrainingEnv(gym.Env):
         self.row: int = 0
         self.position: PositionType = PositionType.NONE
         self.profit: float = 0.0
-        self.pnl_total: float = 0.0
 
         # Define action_space（行動空間）
         n_action_space = len(ActionType)
@@ -188,6 +188,7 @@ class TrainingEnv(gym.Env):
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
+            info["transaction"] = self.get_transaction_result()
 
         self.row += 1
         return observation, reward, terminated, truncated, info

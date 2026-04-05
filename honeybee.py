@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     # 学習用ステップ数の設定
     # timesteps = 1_000_000
-    timesteps = 30_000
+    timesteps = 100_000
 
 
     def make_env():
@@ -90,7 +90,7 @@ if __name__ == "__main__":
         episode_over = done[idx]
     else:
         dict_info = info[idx]
-        # 取引結果を表示
+        # 取引結果を出力
         if "transaction" in dict_info:
             df = dict_info["transaction"]
             print(df)

@@ -36,7 +36,7 @@ if __name__ == "__main__":
     file_pkl = "vecnormalize.pkl"
 
     # 学習用ステップ数の設定
-    timesteps = unit_episode * 200
+    timesteps = unit_episode * 100
 
 
     def make_env():

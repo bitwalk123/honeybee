@@ -27,21 +27,26 @@ class TrainingEnv(gym.Env):
         self.ratio_profit_hold = 0.01  # HOLD 時の含み損益から報酬
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
-        # ポジション・マネージャ
-        self.posman = posman = PositionManager()
-        posman.initPosition([code])
-
         # インスタンス変数の初期化
         self.code: str = code
         self.row: int = 0
         self.position: PositionType = PositionType.NONE
         self.profit: float = 0.0
 
+        # ポジション・マネージャ
+        self.posman = posman = PositionManager()
+        posman.initPosition([self.code])
+
         # Define action_space（行動空間）
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
         # Define observation_space（観測値空間）
+        """
+        【観測値】
+        1. Price（株価）
+        2. Profit（含み損益）
+        """
         self.observation_space = spaces.Box(
             low=np.array([-np.float32('inf'), -np.float32('inf')]),
             high=np.array([np.float32('inf'), np.float32('inf')]),
@@ -68,13 +73,13 @@ class TrainingEnv(gym.Env):
         else:
             raise TypeError(f"Unknown PositionType: {self.position}")
 
-    def get_ts_price(self, row: int) -> tuple[float, float, float]:
+    def get_data(self, row: int) -> tuple:
         """
         ティックデータから一行抽出
         :param row:
         :return:
         """
-        return self.df.iloc[row][["Time", "Price", "Volume"]]
+        return self.df.iloc[row][["Time", "Price"]]
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -107,7 +112,7 @@ class TrainingEnv(gym.Env):
         super().reset(seed=seed)
 
         # Initialize your state
-        _, price, volume = self.get_ts_price(0)
+        _, price = self.get_data(0)
         profit = 0
         observation = np.array([price, profit], dtype=np.float32)
         info = {}  # Additional debug info
@@ -120,8 +125,8 @@ class TrainingEnv(gym.Env):
         :param action:
         :return:
         """
-        # タイムスタンプと株価
-        ts, price, volume = self.get_ts_price(self.row)
+        # データを一行分取得
+        ts, price = self.get_data(self.row)
 
         # 含み損益
         profit = self.posman.getProfit(self.code, price)

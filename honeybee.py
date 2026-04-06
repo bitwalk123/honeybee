@@ -39,7 +39,7 @@ if __name__ == "__main__":
         return env_mon
 
 
-    # ====== 学習環境の準備 ======
+    # ====== 学習用環境の準備 ======
 
     # 3. DummyVecEnv Wrapper
     env_dummy = DummyVecEnv([make_env])
@@ -65,12 +65,17 @@ if __name__ == "__main__":
     df_reward = pd.read_csv(file_log, skiprows=[0])
     learning_curve(df_reward, file_csv)
 
-    # ====== 推論環境の準備 ======
+    # ====== 推論用環境の準備 ======
 
+    # 3. DummyVecEnv Wrapper
     env_inf = DummyVecEnv([make_env])
-    env_inf = VecNormalize.load(file_pkl, env_inf)
+
+    # 4. VecNormalize Wrapper
+    env_inf = VecNormalize.load(file_pkl, env_inf) # 学習情報を読み込む
     env_inf.training = False
     env_inf.norm_reward = False  # 推論時は報酬正規化を無効化
+
+    # 特定環境を指定するインデックス
     idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
 
     # 環境のリセット

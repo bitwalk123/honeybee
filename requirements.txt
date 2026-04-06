@@ -23,4 +23,5 @@ prometheus_client
 pure_eval
 pytokens
 sb3_contrib
+sortedcontainers
 stack-data

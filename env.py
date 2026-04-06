@@ -10,6 +10,7 @@ from gymnasium import spaces
 import numpy as np
 
 from modules.posman import PositionManager
+from modules.technical import MovingAverage, VWAP
 from structs.app_enum import ActionType, PositionType
 
 
@@ -24,7 +25,7 @@ class TrainingEnv(gym.Env):
 
         # 報酬関連
         self.pnl_total = 0
-        self.ratio_profit_hold = 0.01  # HOLD 時の含み損益から報酬
+        self.ratio_profit_hold = 0.01  # HOLD 時の含み損益からの報酬比率
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
         # インスタンス変数の初期化
@@ -41,16 +42,34 @@ class TrainingEnv(gym.Env):
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
+        # 必要な観測値を追加
+        ma1 = MovingAverage(window_size=30)
+        df["MA1"] = [ma1.update(p) for p in df["Price"]]
+        vwap = VWAP()
+        df["VWAP"] = [vwap.update(p, v) for p, v in zip(df["Price"], df["Volume"])]
+        df["Diff"] = (df["MA1"] - df["VWAP"]) / df["VWAP"] * 100
+
+        print(df.tail())
+
         # Define observation_space（観測値空間）
         """
         【観測値】
         1. Price（株価）
         2. Profit（含み損益）
+        3. Diff（MA1 - VWAP 乖離）
         """
         self.observation_space = spaces.Box(
-            low=np.array([-np.float32('inf'), -np.float32('inf')]),
-            high=np.array([np.float32('inf'), np.float32('inf')]),
-            shape=(2,),
+            low=np.array([
+                -np.float32('inf'),
+                -np.float32('inf'),
+                -np.float32('inf'),
+            ]),
+            high=np.array([
+                np.float32('inf'),
+                np.float32('inf'),
+                np.float32('inf'),
+            ]),
+            shape=(3,),
             dtype=np.float32
         )
 
@@ -79,7 +98,7 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        return self.df.iloc[row][["Time", "Price"]]
+        return self.df.iloc[row][["Time", "Price", "Diff"]]
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -112,9 +131,9 @@ class TrainingEnv(gym.Env):
         super().reset(seed=seed)
 
         # Initialize your state
-        _, price = self.get_data(0)
+        _, price, diff = self.get_data(0)
         profit = 0
-        observation = np.array([price, profit], dtype=np.float32)
+        observation = np.array([price, diff, profit], dtype=np.float32)
         info = {}  # Additional debug info
         self.init_status()
         return observation, info
@@ -126,13 +145,13 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # データを一行分取得
-        ts, price = self.get_data(self.row)
+        ts, price, diff = self.get_data(self.row)
 
         # 含み損益
         profit = self.posman.getProfit(self.code, price)
 
         # 観測値
-        observation = np.array([price, profit], dtype=np.float32)
+        observation = np.array([price, diff, profit], dtype=np.float32)
 
         # 報酬
         reward = 0
@@ -141,12 +160,14 @@ class TrainingEnv(gym.Env):
         action_type = ActionType(action)
         if action_type == ActionType.BUY:
             if self.position == PositionType.NONE:
-                # 建玉がなければ買建
+                # 【買建】建玉がなければ買建
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.LONG  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
+                # 買建用 VWAP 判定
+                reward -= diff # diff が負の時に買建すれば報酬
             elif self.position == PositionType.SHORT:
-                # 売建（ショート）であれば（買って）返済
+                # 【返済】売建（ショート）であれば（買って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
@@ -155,12 +176,14 @@ class TrainingEnv(gym.Env):
                 raise "trade rule violation!"
         elif action_type == ActionType.SELL:
             if self.position == PositionType.NONE:
-                # 建玉がなければ売建
+                # 【売建】建玉がなければ売建
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.SHORT  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
+                # 売建用 VWAP 判定
+                reward += diff # diff が正の時に売建すれば報酬
             elif self.position == PositionType.LONG:
-                # 買建（ロング）であれば（売って）返済
+                # 【返済】買建（ロング）であれば（売って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
@@ -168,8 +191,9 @@ class TrainingEnv(gym.Env):
             else:
                 raise "trade rule violation!"
         elif action_type == ActionType.HOLD:
-            # 含み益があれば幾分かを報酬に
-            reward += profit * self.ratio_profit_hold
+            if self.position != PositionType.NONE:
+                # 含み益があれば幾分かを報酬に
+                reward += profit * self.ratio_profit_hold
         else:
             raise f"unknown action type {action_type}!"
 

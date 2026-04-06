@@ -1,4 +1,5 @@
 import os
+import sys
 
 import numpy as np
 import pandas as pd
@@ -26,8 +27,8 @@ if __name__ == "__main__":
     file_pkl = "vecnormalize.pkl"
 
     # 学習用ステップ数の設定
-    # timesteps = 1_000_000
-    timesteps = 100_000
+    # timesteps = 100_000
+    timesteps = 1_000_000
 
 
     def make_env():
@@ -45,6 +46,8 @@ if __name__ == "__main__":
 
     # 4. VecNormalize Wrapper
     env_train = VecNormalize(env_dummy, norm_obs=True, norm_reward=True)
+
+    # sys.exit()
 
     # モデルの準備
     model = MaskablePPO("MlpPolicy", env_train, verbose=1)
@@ -84,7 +87,7 @@ if __name__ == "__main__":
         action_masks = env_inf.env_method("action_masks")[idx]
         # マスク情報付きで推論
         action, _states = model.predict(obs, action_masks=action_masks)
-        action = np.array([action]) # VecEnv では複数環境分の配列
+        action = np.array([action])  # VecEnv では複数環境分の配列
         obs, reward, done, info = env_inf.step(action)
         total_reward += reward[idx]
         episode_over = done[idx]

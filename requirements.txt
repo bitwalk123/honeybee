@@ -25,3 +25,4 @@ pytokens
 sb3_contrib
 sortedcontainers
 stack-data
+tensorboard

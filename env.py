@@ -24,7 +24,7 @@ class TrainingEnv(gym.Env):
 
         # 報酬関連
         self.pnl_total = 0
-        self.ratio_profit_hold = 0.1  # HOLD 時の含み損益から報酬
+        self.ratio_profit_hold = 0.01  # HOLD 時の含み損益から報酬
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
         # ポジション・マネージャ
@@ -42,16 +42,9 @@ class TrainingEnv(gym.Env):
         self.action_space = spaces.Discrete(n_action_space)
 
         # Define observation_space（観測値空間）
-        """
-        0. 株価［最小値, 最大値］
-        1. 含み益［-株価レンジ, +株価レンジ］
-        """
-        price_max = df["Price"].max()
-        price_min = df["Price"].min()
-        price_rng = price_max - price_min
         self.observation_space = spaces.Box(
-            low=np.array([price_min, -price_rng]),
-            high=np.array([price_max, +price_rng]),
+            low=np.array([-np.float32('inf'), -np.float32('inf')]),
+            high=np.array([np.float32('inf'), np.float32('inf')]),
             shape=(2,),
             dtype=np.float32
         )

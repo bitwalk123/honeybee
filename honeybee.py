@@ -100,4 +100,4 @@ if __name__ == "__main__":
             )
 
     # 環境の終了処理
-    env_train.close()
+    env_inf.close()

@@ -1,5 +1,5 @@
 import os
-import sys
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from env import TrainingEnv
 from funcs.io import get_sample_data
 from funcs.plot import learning_curve
+from modules.agent_auxiliary import InfoCallback
 
 if __name__ == "__main__":
     # 使用するティックデータ
@@ -17,25 +18,32 @@ if __name__ == "__main__":
 
     # 銘柄コードとティックデータのデータフレームを取得
     code, df = get_sample_data(file_csv)
+    unit_episode = len(df)
 
     # ログフォルダの準備
-    dir_log = "./logs/"
-    os.makedirs(dir_log, exist_ok=True)
-    file_log = os.path.join(dir_log, "monitor.csv")
+    dir_logs = "./logs/"
+    os.makedirs(dir_logs, exist_ok=True)
+    file_log = os.path.join(dir_logs, "monitor.csv")
+
+    # TensorBoard 用ログ
+    tb_logs = "./tb_logs/"
+    if os.path.exists(tb_logs):
+        # 現状では毎回新規作成
+        shutil.rmtree(tb_logs)
+    os.makedirs(tb_logs, exist_ok=True)
 
     # VecNormalizeの内部状態の保存用
     file_pkl = "vecnormalize.pkl"
 
     # 学習用ステップ数の設定
-    # timesteps = 100_000
-    timesteps = 1_000_000
+    timesteps = unit_episode * 100
 
 
     def make_env():
         # 1. Gymnasium 継承の環境クラスのインスタンス
         env_gym = TrainingEnv(code, df)
         # 2. Monitor Wrapper
-        env_mon = Monitor(env_gym, dir_log)
+        env_mon = Monitor(env_gym, dir_logs)
         return env_mon
 
 
@@ -50,11 +58,21 @@ if __name__ == "__main__":
     # sys.exit()
 
     # モデルの準備
-    model = MaskablePPO("MlpPolicy", env_train, verbose=1)
+    model = MaskablePPO(
+        "MlpPolicy",
+        env_train,
+        verbose=1,
+        tensorboard_log=tb_logs,
+    )
 
     # ====== 学習実施 ======
     print("Begin training...")
-    model.learn(total_timesteps=timesteps)
+    # model.learn(total_timesteps=timesteps)
+    callback = InfoCallback()
+    model.learn(
+        total_timesteps=timesteps,
+        callback=callback,
+    )
 
     # 推論時に利用できるように VecNormalize の内部状態を保存
     env_train.save(file_pkl)
@@ -71,7 +89,7 @@ if __name__ == "__main__":
     env_inf = DummyVecEnv([make_env])
 
     # 4. VecNormalize Wrapper
-    env_inf = VecNormalize.load(file_pkl, env_inf) # 学習情報を読み込む
+    env_inf = VecNormalize.load(file_pkl, env_inf)  # 学習情報を読み込む
     env_inf.training = False
     env_inf.norm_reward = False  # 推論時は報酬正規化を無効化
 

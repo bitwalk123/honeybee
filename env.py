@@ -56,7 +56,7 @@ class TrainingEnv(gym.Env):
         【観測値】
         1. Price（株価）
         2. Profit（含み損益）
-        3. Diff（MA1 - VWAP 乖離）
+        3. Diff（乖離率 - (MA1 - VWAP) / VWAP）
         """
         self.observation_space = spaces.Box(
             low=np.array([

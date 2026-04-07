@@ -1,152 +1,20 @@
-import os
-import shutil
-
-import numpy as np
-import pandas as pd
-from sb3_contrib import MaskablePPO
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-
-from env import TrainingEnv
-from funcs.io import get_sample_data
-from funcs.plot import learning_curve
-from modules.agent_auxiliary import InfoCallback
+from modules.agent import MyPPOAgent
 
 if __name__ == "__main__":
     # 使用するティックデータ
     file_csv: str = "20260401_9984.csv"
-
-    # 銘柄コードとティックデータのデータフレームを取得
-    code, df = get_sample_data(file_csv)
-    unit_episode = len(df)
-
-    # ログフォルダの準備
+    # ログフォルダ
     dir_logs = "./logs/"
-    if os.path.exists(dir_logs):
-        # 現状では毎回削除
-        shutil.rmtree(dir_logs)
-    os.makedirs(dir_logs, exist_ok=True)
-    file_log = os.path.join(dir_logs, "monitor.csv")
-
     # TensorBoard 用ログ
     tb_logs = "./tb_logs/"
-    if os.path.exists(tb_logs):
-        # 現状では毎回削除
-        shutil.rmtree(tb_logs)
-    os.makedirs(tb_logs, exist_ok=True)
 
-    # VecNormalizeの内部状態の保存用
-    file_pkl = "vecnormalize.pkl"
-
-    # 学習用ステップ数の設定
-    timesteps = unit_episode * 100
+    # エピソード数
+    n_episode = 3
+    agent = MyPPOAgent(file_csv, dir_logs, tb_logs, n_episode)
+    agent.train()
 
 
-    def make_env():
-        # 1. Gymnasium 継承の環境クラスのインスタンス
-        env_gym = TrainingEnv(code, df)
-        # 2. Monitor Wrapper
-        env_mon = Monitor(env_gym, dir_logs)
-        return env_mon
 
 
-    # ====== 学習用環境の準備 ======
 
-    # 3. DummyVecEnv Wrapper
-    env_dummy = DummyVecEnv([make_env])
 
-    # 4. VecNormalize Wrapper
-    env_train = VecNormalize(
-        env_dummy,
-        norm_obs=True,
-        norm_reward=True,
-        norm_obs_keys=["market"]
-    )
-
-    # sys.exit()
-
-    # モデルの準備
-    '''
-    model = MaskablePPO(
-        "MlpPolicy",
-        env_train,
-        verbose=1,
-        tensorboard_log=tb_logs,
-    )
-    '''
-    model = MaskablePPO(
-        "MultiInputPolicy",
-        env_train,
-        verbose=1,
-        tensorboard_log=tb_logs,
-    )
-
-    # ====== 学習実施 ======
-    print("Begin training...")
-    # model.learn(total_timesteps=timesteps)
-    callback = InfoCallback(dir_logs=dir_logs)
-    model.learn(
-        total_timesteps=timesteps,
-        callback=callback,
-    )
-
-    # 推論時に利用できるように VecNormalize の内部状態を保存
-    env_train.save(file_pkl)
-
-    # ====== 報酬トレンド/学習曲線 ======
-
-    # 最初の行の読み込みを除外
-    df_reward = pd.read_csv(file_log, skiprows=[0])
-    learning_curve(df_reward, file_csv)
-
-    # ====== 推論用環境の準備 ======
-
-    # 3. DummyVecEnv Wrapper
-    env_inf = DummyVecEnv([make_env])
-
-    # 4. VecNormalize Wrapper
-    env_inf = VecNormalize.load(file_pkl, env_inf)  # 学習情報を読み込む
-    env_inf.training = False
-    env_inf.norm_reward = False  # 推論時は報酬正規化を無効化
-
-    # 特定環境を指定するインデックス
-    idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
-
-    # 環境のリセット
-    obs = env_inf.reset()
-    # assert env_inf.observation_space.contains(obs), "observation_space mismatch"
-    print(f"Initial observation: {obs}")
-    episode_over = False
-    total_reward = 0
-
-    # ====== 推論実施 ======
-    print("Begin inference...")
-    info = []
-    while not episode_over:
-        '''
-        # VecEnv では action_masks を env_method で取得する
-        action_masks = env_inf.env_method("action_masks")[idx]
-        # マスク情報付きで推論
-        action, _states = model.predict(obs, action_masks=action_masks)
-        '''
-        raw_mask = env_inf.env_method("action_masks")[idx]  # 1D mask
-        action_masks = np.array([raw_mask], dtype=np.bool_)  # バッチ次元を付与
-        action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
-
-        action = np.array([action])  # VecEnv では複数環境分の配列
-        obs, reward, done, info = env_inf.step(action)
-        total_reward += reward[idx]
-        episode_over = done[idx]
-    else:
-        dict_info = info[idx]
-        # 取引結果を出力
-        if "transaction" in dict_info:
-            df = dict_info["transaction"]
-            print(df)
-            print(
-                f"モデル報酬 : {total_reward},\n"
-                f"損益 : {df['損益'].sum()} 円, 約定係数 : {len(df)} 回"
-            )
-
-    # 環境の終了処理
-    env_inf.close()

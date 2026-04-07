@@ -65,41 +65,20 @@ class TrainingEnv(gym.Env):
         # Define observation_space（観測値空間）
         """
         【観測値】- VecNormalize Wrapper を使用する前提
+        [market]
         1. Price（株価）
         2. Profit（含み損益）
         3. Diff（乖離率 - (MA1 - VWAP) / VWAP）
+        [position]
         4. SHORT
         5. NONE
         6. LONG
         """
-        """
-        self.observation_space = spaces.Box(
-            low=np.array([
-                -np.float32('inf'),
-                -np.float32('inf'),
-                -np.float32('inf'),
-                np.float32(0),
-                np.float32(0),
-                np.float32(0),
-            ]),
-            high=np.array([
-                np.float32('inf'),
-                np.float32('inf'),
-                np.float32('inf'),
-                np.float32(1),
-                np.float32(1),
-                np.float32(1),
-            ]),
-            shape=(6,),
-            dtype=np.float32
-        )
-        """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),  # [price, diff, profit]
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
-    '''
     def action_masks(self) -> np.ndarray:
         """
         行動マスク
@@ -109,24 +88,12 @@ class TrainingEnv(gym.Env):
         """
         if self.position == PositionType.NONE:
             # 建玉なし → 取りうるアクション: HOLD, BUY, SELL
-            return np.array([1, 1, 1], dtype=np.int8)
-        elif self.position == PositionType.LONG:
-            # 建玉あり LONG → 取りうるアクション: HOLD, SELL
-            return np.array([1, 0, 1], dtype=np.int8)
-        elif self.position == PositionType.SHORT:
-            # 建玉あり SHORT → 取りうるアクション: HOLD, BUY
-            return np.array([1, 1, 0], dtype=np.int8)
-        else:
-            raise TypeError(f"Unknown PositionType: {self.position}")
-    '''
-
-    # TrainingEnv.action_masks
-    def action_masks(self) -> np.ndarray:
-        if self.position == PositionType.NONE:
             mask = np.array([True, True, True], dtype=np.bool_)
         elif self.position == PositionType.LONG:
+            # 建玉あり LONG → 取りうるアクション: HOLD, SELL
             mask = np.array([True, False, True], dtype=np.bool_)
         elif self.position == PositionType.SHORT:
+            # 建玉あり SHORT → 取りうるアクション: HOLD, BUY
             mask = np.array([True, True, False], dtype=np.bool_)
         else:
             raise TypeError(f"Unknown PositionType: {self.position}")
@@ -141,7 +108,12 @@ class TrainingEnv(gym.Env):
         return self.df_tick.iloc[row][["Time", "Price", "Diff"]]
 
     def get_reward(self) -> pd.DataFrame:
+        """
+        ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
+        :return:
+        """
         df = pd.DataFrame(self.dict_reward)
+        # タイムスタンプを datetime.datetime 型に変換
         df["DateTime"] = [datetime.datetime.fromtimestamp(t) for t in df["ts"]]
         return df[["DateTime", "reward"]]
 
@@ -150,6 +122,7 @@ class TrainingEnv(gym.Env):
         取引結果
         :return:
         """
+        # ポジション・マネージャから取引明細をデーテフレームで取得
         return self.posman.getTransactionResult()
 
     def init_status(self) -> None:
@@ -175,17 +148,15 @@ class TrainingEnv(gym.Env):
         # Mandatory: seed the random number generator
         super().reset(seed=seed)
 
-        # Initialize your state
+        # データフレームの最初の行のデータを取得
         _, price, diff = self.get_data(0)
         profit = 0
-        """
-        observation = np.array([price, diff, profit], dtype=np.float32)
-        pos_onehot = position_to_onehot(PositionType.NONE)
-        obs = np.concatenate([observation, pos_onehot])
-        """
+
+        # ====== 観測値（状態） ======
         market = np.array([price, diff, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
         obs = {"market": market, "position": position}
+
         info = {}  # Additional debug info
         self.init_status()
         return obs, info
@@ -196,25 +167,21 @@ class TrainingEnv(gym.Env):
         :param action:
         :return:
         """
-        # データを一行分取得
+        # データフレームからデータを一行分取得
         ts, price, diff = self.get_data(self.row)
-
-        # 含み損益
+        # 含み損益の取得
         profit = self.posman.getProfit(self.code, price)
-
-        # 観測値
-        # observation = np.array([price, diff, profit], dtype=np.float32)
-
-        # 報酬
+        # 初期報酬
         reward = 0
 
-        # 建玉管理
+        # ====== 建玉管理 ======
         action_type = ActionType(action)
         if action_type == ActionType.BUY:
             if self.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.LONG  # ポジションを更新
+                # 【報酬】
                 reward -= self.cost_contract  # 約定コスト
                 # 買建用 VWAP 判定
                 reward -= diff  # diff が負の時に買建すれば報酬
@@ -222,16 +189,17 @@ class TrainingEnv(gym.Env):
                 # 【返済】売建（ショート）であれば（買って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
+                # 【報酬】
                 reward -= self.cost_contract  # 約定コスト
                 reward += profit  # 含み損益分そっくり報酬
             else:
-                #raise "trade rule violation!"
-                raise RuntimeError("trade rule violation!")
+                raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.SELL:
             if self.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.SHORT  # ポジションを更新
+                # 【報酬】
                 reward -= self.cost_contract  # 約定コスト
                 # 売建用 VWAP 判定
                 reward += diff  # diff が正の時に売建すれば報酬
@@ -239,18 +207,19 @@ class TrainingEnv(gym.Env):
                 # 【返済】買建（ロング）であれば（売って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
+                # 【報酬】
                 reward -= self.cost_contract  # 約定コスト
                 reward += profit  # 含み損益分そっくり報酬
             else:
-                raise "trade rule violation!"
+                raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
             if self.position != PositionType.NONE:
                 # 含み益があれば幾分かを報酬に
                 reward += profit * self.ratio_profit_hold
         else:
-            raise f"unknown action type {action_type}!"
+            raise TypeError(f"Unknown ActionType: {action_type}!")
 
-        # エピソード終了判定
+        # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
         info = {}
@@ -263,22 +232,23 @@ class TrainingEnv(gym.Env):
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
+            # 取引情報（データフレーム）
             info["transaction"] = self.get_transaction_result()
+            # 報酬情報（データフレーム）
             info["reward"] = self.get_reward()
 
-        # モデル報酬の保持
+        # モデル報酬の保持（分析用）
         self.dict_reward["ts"].append(ts)
         self.dict_reward["reward"].append(reward)
 
+        # ステップ（データフレームの行）更新
         self.row += 1
-        """
-        pos_onehot = position_to_onehot(self.position)
-        obs = np.concatenate([observation, pos_onehot])
-        """
-        # 既存ロジックで price,diff,profit を計算
+
+        # ====== 観測値（状態） ======
         market = np.array([price, diff, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "position": position}
+
         return obs, reward, terminated, truncated, info
 
     def render(self) -> None:

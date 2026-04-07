@@ -16,6 +16,12 @@ from modules.technical import MovingAverage, VWAP
 from structs.app_enum import ActionType, PositionType
 
 
+def position_to_onehot(pos: PositionType) -> np.ndarray:
+    onehot = np.zeros(3, dtype=np.float32)
+    onehot[int(pos)] = 1.0
+    return onehot
+
+
 class TrainingEnv(gym.Env):
     # metadata defines render modes and framerate
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
@@ -58,26 +64,42 @@ class TrainingEnv(gym.Env):
 
         # Define observation_space（観測値空間）
         """
-        【観測値】
+        【観測値】- VecNormalize Wrapper を使用する前提
         1. Price（株価）
         2. Profit（含み損益）
         3. Diff（乖離率 - (MA1 - VWAP) / VWAP）
+        4. SHORT
+        5. NONE
+        6. LONG
+        """
         """
         self.observation_space = spaces.Box(
             low=np.array([
                 -np.float32('inf'),
                 -np.float32('inf'),
                 -np.float32('inf'),
+                np.float32(0),
+                np.float32(0),
+                np.float32(0),
             ]),
             high=np.array([
                 np.float32('inf'),
                 np.float32('inf'),
                 np.float32('inf'),
+                np.float32(1),
+                np.float32(1),
+                np.float32(1),
             ]),
-            shape=(3,),
+            shape=(6,),
             dtype=np.float32
         )
+        """
+        self.observation_space = spaces.Dict({
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),  # [price, diff, profit]
+            "position": spaces.MultiBinary(3),  # one-hot
+        })
 
+    '''
     def action_masks(self) -> np.ndarray:
         """
         行動マスク
@@ -96,6 +118,19 @@ class TrainingEnv(gym.Env):
             return np.array([1, 1, 0], dtype=np.int8)
         else:
             raise TypeError(f"Unknown PositionType: {self.position}")
+    '''
+
+    # TrainingEnv.action_masks
+    def action_masks(self) -> np.ndarray:
+        if self.position == PositionType.NONE:
+            mask = np.array([True, True, True], dtype=np.bool_)
+        elif self.position == PositionType.LONG:
+            mask = np.array([True, False, True], dtype=np.bool_)
+        elif self.position == PositionType.SHORT:
+            mask = np.array([True, True, False], dtype=np.bool_)
+        else:
+            raise TypeError(f"Unknown PositionType: {self.position}")
+        return mask
 
     def get_data(self, row: int) -> tuple:
         """
@@ -130,7 +165,7 @@ class TrainingEnv(gym.Env):
         self.posman.reset()
         self.posman.initPosition([self.code])
 
-    def reset(self, seed=None, options=None) -> tuple[np.ndarray, dict[str, Any]]:
+    def reset(self, seed=None, options=None):
         """
         環境のリセット処理
         :param seed:
@@ -143,12 +178,19 @@ class TrainingEnv(gym.Env):
         # Initialize your state
         _, price, diff = self.get_data(0)
         profit = 0
+        """
         observation = np.array([price, diff, profit], dtype=np.float32)
+        pos_onehot = position_to_onehot(PositionType.NONE)
+        obs = np.concatenate([observation, pos_onehot])
+        """
+        market = np.array([price, diff, profit], dtype=np.float32)
+        position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
+        obs = {"market": market, "position": position}
         info = {}  # Additional debug info
         self.init_status()
-        return observation, info
+        return obs, info
 
-    def step(self, action) -> tuple[np.ndarray, float, bool, bool, dict[str, Any]]:
+    def step(self, action):
         """
         ステップ処理
         :param action:
@@ -161,7 +203,7 @@ class TrainingEnv(gym.Env):
         profit = self.posman.getProfit(self.code, price)
 
         # 観測値
-        observation = np.array([price, diff, profit], dtype=np.float32)
+        # observation = np.array([price, diff, profit], dtype=np.float32)
 
         # 報酬
         reward = 0
@@ -183,7 +225,8 @@ class TrainingEnv(gym.Env):
                 reward -= self.cost_contract  # 約定コスト
                 reward += profit  # 含み損益分そっくり報酬
             else:
-                raise "trade rule violation!"
+                #raise "trade rule violation!"
+                raise RuntimeError("trade rule violation!")
         elif action_type == ActionType.SELL:
             if self.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
@@ -228,7 +271,15 @@ class TrainingEnv(gym.Env):
         self.dict_reward["reward"].append(reward)
 
         self.row += 1
-        return observation, reward, terminated, truncated, info
+        """
+        pos_onehot = position_to_onehot(self.position)
+        obs = np.concatenate([observation, pos_onehot])
+        """
+        # 既存ロジックで price,diff,profit を計算
+        market = np.array([price, diff, profit], dtype=np.float32)
+        position = position_to_onehot(self.position).astype(np.float32)
+        obs = {"market": market, "position": position}
+        return obs, reward, terminated, truncated, info
 
     def render(self) -> None:
         # Implement visualization logic based on self.render_mode

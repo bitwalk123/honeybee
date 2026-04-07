@@ -56,13 +56,26 @@ if __name__ == "__main__":
     env_dummy = DummyVecEnv([make_env])
 
     # 4. VecNormalize Wrapper
-    env_train = VecNormalize(env_dummy, norm_obs=True, norm_reward=True)
+    env_train = VecNormalize(
+        env_dummy,
+        norm_obs=True,
+        norm_reward=True,
+        norm_obs_keys=["market"]
+    )
 
     # sys.exit()
 
     # モデルの準備
+    '''
     model = MaskablePPO(
         "MlpPolicy",
+        env_train,
+        verbose=1,
+        tensorboard_log=tb_logs,
+    )
+    '''
+    model = MaskablePPO(
+        "MultiInputPolicy",
         env_train,
         verbose=1,
         tensorboard_log=tb_logs,
@@ -101,6 +114,7 @@ if __name__ == "__main__":
 
     # 環境のリセット
     obs = env_inf.reset()
+    # assert env_inf.observation_space.contains(obs), "observation_space mismatch"
     print(f"Initial observation: {obs}")
     episode_over = False
     total_reward = 0
@@ -109,10 +123,16 @@ if __name__ == "__main__":
     print("Begin inference...")
     info = []
     while not episode_over:
+        '''
         # VecEnv では action_masks を env_method で取得する
         action_masks = env_inf.env_method("action_masks")[idx]
         # マスク情報付きで推論
         action, _states = model.predict(obs, action_masks=action_masks)
+        '''
+        raw_mask = env_inf.env_method("action_masks")[idx]  # 1D mask
+        action_masks = np.array([raw_mask], dtype=np.bool_)  # バッチ次元を付与
+        action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
+
         action = np.array([action])  # VecEnv では複数環境分の配列
         obs, reward, done, info = env_inf.step(action)
         total_reward += reward[idx]

@@ -27,6 +27,7 @@ class MyPPOAgent:
         # TensorBoard 用ログの準備
         update_new_dir(self.tb_logs)
 
+        self.model: MaskablePPO | None = None
         # VecNormalizeの内部状態の保存用
         self.file_pkl = "vecnormalize.pkl"
 
@@ -56,8 +57,8 @@ class MyPPOAgent:
             norm_obs_keys=["market"]
         )
 
-        # ====== モデル ======
-        model = MaskablePPO(
+        # ====== モデル生成 ======
+        self.model = MaskablePPO(
             "MultiInputPolicy",
             env_train,
             verbose=1,
@@ -67,7 +68,7 @@ class MyPPOAgent:
         # ====== 学習実施 ======
         print("Begin training...")
         callback = InfoCallback(dir_logs=self.dir_logs)
-        model.learn(
+        self.model.learn(
             total_timesteps=self.timesteps,
             callback=callback,
         )
@@ -79,22 +80,28 @@ class MyPPOAgent:
         df_reward = pd.read_csv(self.file_log, skiprows=[0])
         learning_curve(df_reward, self.file_csv)
 
+    def infer(self):
+        if self.model is None:
+            # モデルが空でないかチェック
+            print("no trained model available!")
+            return
+
         # ====== 学習後の推論用環境の準備 ======
         # 3. DummyVecEnv Wrapper
-        env_inf = DummyVecEnv([self.make_env])
+        env_dummy = DummyVecEnv([self.make_env])
 
         # 4. VecNormalize Wrapper
-        env_inf = VecNormalize.load(self.file_pkl, env_inf)  # 学習情報を読み込む
-        env_inf.training = False
-        env_inf.norm_reward = False  # 推論時は報酬正規化を無効化
+        env_infer = VecNormalize.load(self.file_pkl, env_dummy)  # 学習情報を読み込む
+        env_infer.training = False
+        env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
 
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
 
         # 環境のリセット
-        obs = env_inf.reset()
+        obs = env_infer.reset()
         # assert env_inf.observation_space.contains(obs), "observation_space mismatch"
-        print(f"Initial observation: {obs}")
+        print(f"Initial observation:\n{obs}")
         episode_over = False
         total_reward = 0
 
@@ -102,18 +109,14 @@ class MyPPOAgent:
         print("Begin inference...")
         info = []
         while not episode_over:
-            '''
             # VecEnv では action_masks を env_method で取得する
-            action_masks = env_inf.env_method("action_masks")[idx]
-            # マスク情報付きで推論
-            action, _states = model.predict(obs, action_masks=action_masks)
-            '''
-            raw_mask = env_inf.env_method("action_masks")[idx]  # 1D mask
+            raw_mask = env_infer.env_method("action_masks")[idx]  # 1D mask
             action_masks = np.array([raw_mask], dtype=np.bool_)  # バッチ次元を付与
-            action, _states = model.predict(obs, action_masks=action_masks, deterministic=True)
-
+            # マスク情報付きで推論
+            action, _states = self.model.predict(obs, action_masks=action_masks, deterministic=True)
+            # 環境でステップ処理
             action = np.array([action])  # VecEnv では複数環境分の配列
-            obs, reward, done, info = env_inf.step(action)
+            obs, reward, done, info = env_infer.step(action)
             total_reward += reward[idx]
             episode_over = done[idx]
         else:
@@ -128,4 +131,4 @@ class MyPPOAgent:
                 )
 
         # 環境の終了処理
-        env_inf.close()
+        env_infer.close()

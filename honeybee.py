@@ -22,13 +22,16 @@ if __name__ == "__main__":
 
     # ログフォルダの準備
     dir_logs = "./logs/"
+    if os.path.exists(dir_logs):
+        # 現状では毎回削除
+        shutil.rmtree(dir_logs)
     os.makedirs(dir_logs, exist_ok=True)
     file_log = os.path.join(dir_logs, "monitor.csv")
 
     # TensorBoard 用ログ
     tb_logs = "./tb_logs/"
     if os.path.exists(tb_logs):
-        # 現状では毎回新規作成
+        # 現状では毎回削除
         shutil.rmtree(tb_logs)
     os.makedirs(tb_logs, exist_ok=True)
 
@@ -68,7 +71,7 @@ if __name__ == "__main__":
     # ====== 学習実施 ======
     print("Begin training...")
     # model.learn(total_timesteps=timesteps)
-    callback = InfoCallback()
+    callback = InfoCallback(dir_logs=dir_logs)
     model.learn(
         total_timesteps=timesteps,
         callback=callback,

@@ -2,6 +2,8 @@
 Reference:
 https://gymnasium.farama.org/introduction/create_custom_env/
 """
+import datetime
+from collections import defaultdict
 from typing import Any
 
 import gymnasium as gym
@@ -18,14 +20,17 @@ class TrainingEnv(gym.Env):
     # metadata defines render modes and framerate
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, code: str, df: pd.DataFrame, render_mode=None) -> None:
+    def __init__(self, code: str, df_tick: pd.DataFrame, render_mode=None) -> None:
         super().__init__()
-        self.df: pd.DataFrame = df
+        self.df_tick: pd.DataFrame = df_tick
         self.render_mode = render_mode
+
+        # 報酬保持用辞書 → 最後にデータフレーム化
+        self.dict_reward = defaultdict(list)
 
         # 報酬関連
         self.pnl_total = 0
-        self.ratio_profit_hold = 0.01  # HOLD 時の含み損益からの報酬比率
+        self.ratio_profit_hold = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
         # インスタンス変数の初期化
@@ -44,12 +49,12 @@ class TrainingEnv(gym.Env):
 
         # 必要な観測値を追加
         ma1 = MovingAverage(window_size=30)
-        df["MA1"] = [ma1.update(p) for p in df["Price"]]
+        df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
         vwap = VWAP()
-        df["VWAP"] = [vwap.update(p, v) for p, v in zip(df["Price"], df["Volume"])]
-        df["Diff"] = (df["MA1"] - df["VWAP"]) / df["VWAP"] * 100
+        df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
+        df_tick["Diff"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
 
-        print(df.tail())
+        print(df_tick.tail())
 
         # Define observation_space（観測値空間）
         """
@@ -98,7 +103,12 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        return self.df.iloc[row][["Time", "Price", "Diff"]]
+        return self.df_tick.iloc[row][["Time", "Price", "Diff"]]
+
+    def get_reward(self) -> pd.DataFrame:
+        df = pd.DataFrame(self.dict_reward)
+        df["DateTime"] = [datetime.datetime.fromtimestamp(t) for t in df["ts"]]
+        return df[["DateTime", "reward"]]
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -165,7 +175,7 @@ class TrainingEnv(gym.Env):
                 self.position = PositionType.LONG  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
                 # 買建用 VWAP 判定
-                reward -= diff # diff が負の時に買建すれば報酬
+                reward -= diff  # diff が負の時に買建すれば報酬
             elif self.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 self.posman.closePosition(self.code, ts, price)
@@ -181,7 +191,7 @@ class TrainingEnv(gym.Env):
                 self.position = PositionType.SHORT  # ポジションを更新
                 reward -= self.cost_contract  # 約定コスト
                 # 売建用 VWAP 判定
-                reward += diff # diff が正の時に売建すれば報酬
+                reward += diff  # diff が正の時に売建すれば報酬
             elif self.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 self.posman.closePosition(self.code, ts, price)
@@ -201,7 +211,7 @@ class TrainingEnv(gym.Env):
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
         info = {}
-        if len(self.df) - 1 <= self.row:
+        if len(self.df_tick) - 1 <= self.row:
             if self.posman.hasPosition(self.code):
                 reward -= self.cost_contract  # 約定コスト
                 reward += profit * (1 - self.ratio_profit_hold)  # 残りの含み損益分
@@ -211,6 +221,11 @@ class TrainingEnv(gym.Env):
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
             info["transaction"] = self.get_transaction_result()
+            info["reward"] = self.get_reward()
+
+        # モデル報酬の保持
+        self.dict_reward["ts"].append(ts)
+        self.dict_reward["reward"].append(reward)
 
         self.row += 1
         return observation, reward, terminated, truncated, info

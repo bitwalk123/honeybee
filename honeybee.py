@@ -12,13 +12,13 @@ if __name__ == "__main__":
 
     # 概ねのエピソード数
     n_episode = 3
-    agent = MyPPOAgent(file_csv, dir_logs, tb_logs, n_episode)
+    agent = MyPPOAgent(dir_logs, tb_logs)
 
     # 学習
-    agent.train()
+    agent.train(file_csv)
 
     # 推論（現在は同じファイルで）
-    agent.infer()
+    agent.infer(file_csv)
 
 
 

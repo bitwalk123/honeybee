@@ -10,18 +10,12 @@ if __name__ == "__main__":
     # TensorBoard 用ログ
     tb_logs = "./tb_logs/"
 
-    # 概ねのエピソード数
-    n_episode = 3
+    # 学習用エージェント
     agent = MyPPOAgent(dir_logs, tb_logs)
 
     # 学習
-    agent.train(file_csv)
+    n_episode = 100  # 概ねのエピソード数
+    agent.train(file_csv, n_episode)
 
     # 推論（現在は同じファイルで）
     agent.infer(file_csv)
-
-
-
-
-
-

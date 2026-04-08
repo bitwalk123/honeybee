@@ -31,15 +31,16 @@ class TrainingEnv(gym.Env):
         self.df_tick: pd.DataFrame = df_tick
         self.render_mode = render_mode
 
+        # ====== 報酬関連の設定 ======
+        # エピソードにおける総報酬
+        self.pnl_total = 0
         # 報酬保持用辞書 → 最後にデータフレーム化
         self.dict_reward = defaultdict(list)
-
-        # 報酬関連
-        self.pnl_total = 0
+        # 報酬パラメータ
         self.ratio_profit_hold = 0.015  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
-        # インスタンス変数の初期化
+        # ====== インスタンス変数の初期化 ======
         self.code: str = code
         self.row: int = 0
         self.position: PositionType = PositionType.NONE
@@ -135,8 +136,10 @@ class TrainingEnv(gym.Env):
         self.position = PositionType.NONE
         self.profit: float = 0.0
         self.pnl_total: float = 0.0
+
         # 報酬保持用辞書 → 最後にデータフレーム化
         self.dict_reward = defaultdict(list)
+
         # ポジション・マネージャのリセットと初期化
         self.posman.reset()
         self.posman.initPosition([self.code])
@@ -152,10 +155,12 @@ class TrainingEnv(gym.Env):
         # Gymnasiumの仕様に従ってseedを設定し、乱数生成器を取得
         super().reset(seed=seed)
 
+        # 環境の初期化（常に寄り付きから開始）
+        self.init_status()
+
         # データフレームの最初の行のデータを取得
         _, price, diff = self.get_data(0)
         profit = 0
-        self.init_status()
 
         # ====== 観測値（状態） ======
         market = np.array([price, diff, profit], dtype=np.float32)

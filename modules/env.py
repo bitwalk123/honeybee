@@ -31,16 +31,17 @@ class TrainingEnv(gym.Env):
         self.df_tick: pd.DataFrame = df_tick
         self.render_mode = render_mode
 
-        # ====== 報酬関連の設定 ======
+        # ====== 報酬パラメータ ======
+        self.RATIO_PROFIT_HOLD: float = 0.02  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
+
+        # 報酬関連の設定
         # エピソードにおける総報酬
         self.pnl_total = 0
         # 報酬保持用辞書 → 最後にデータフレーム化
         self.dict_reward = defaultdict(list)
-        # 報酬パラメータ
-        self.ratio_profit_hold = 0.02  # HOLD（建玉あり）時の含み損益からの報酬比率
-        self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
-        # ====== インスタンス変数の初期化 ======
+        # インスタンス変数の初期化
         self.code: str = code
         self.row: int = 0
         self.position: PositionType = PositionType.NONE
@@ -59,7 +60,7 @@ class TrainingEnv(gym.Env):
         df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
         vwap = VWAP()
         df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
-        df_tick["Diff"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
+        df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
 
         print(df_tick.tail())
 
@@ -68,7 +69,7 @@ class TrainingEnv(gym.Env):
         【観測値】- VecNormalize Wrapper を使用する前提
         [market]
         1. Price（株価）
-        2. Diff（乖離率 - (MA1 - VWAP) / VWAP）
+        2. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         3. Profit（含み損益）
         [position]
         4. SHORT
@@ -106,7 +107,7 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        return self.df_tick.iloc[row][["Time", "Price", "Diff"]]
+        return self.df_tick.iloc[row][["Time", "Price", "DiffVWAP"]]
 
     def get_reward(self) -> pd.DataFrame:
         """
@@ -159,11 +160,11 @@ class TrainingEnv(gym.Env):
         self.init_status()
 
         # データフレームの最初の行のデータを取得
-        _, price, diff = self.get_data(0)
+        _, price, diff_vwap = self.get_data(0)
         profit = 0
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff, profit], dtype=np.float32)
+        market = np.array([price, diff_vwap, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
         obs = {"market": market, "position": position}
 
@@ -177,7 +178,7 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # データフレームからデータを一行分取得
-        ts, price, diff = self.get_data(self.row)
+        ts, price, diff_vwap = self.get_data(self.row)
         # 含み損益の取得
         profit = self.posman.getProfit(self.code, price)
         # 初期報酬
@@ -191,15 +192,15 @@ class TrainingEnv(gym.Env):
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.LONG  # ポジションを更新
                 # 【報酬】
-                reward -= self.cost_contract  # 約定コスト
+                reward -= self.COST_CONTRACT  # 約定コスト
                 # 買建用 VWAP 判定
-                reward -= diff  # diff が負の時に買建すれば報酬
+                reward -= diff_vwap  # diff_vwap が負の時に買建すれば報酬
             elif self.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
                 # 【報酬】
-                reward -= self.cost_contract  # 約定コスト
+                reward -= self.COST_CONTRACT  # 約定コスト
                 reward += profit  # 含み損益分そっくり報酬
             else:
                 raise RuntimeError("Trade rule violation!")
@@ -209,22 +210,22 @@ class TrainingEnv(gym.Env):
                 self.posman.openPosition(self.code, ts, price, action_type)
                 self.position = PositionType.SHORT  # ポジションを更新
                 # 【報酬】
-                reward -= self.cost_contract  # 約定コスト
+                reward -= self.COST_CONTRACT  # 約定コスト
                 # 売建用 VWAP 判定
-                reward += diff  # diff が正の時に売建すれば報酬
+                reward += diff_vwap  # diff_vwap が正の時に売建すれば報酬
             elif self.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 self.posman.closePosition(self.code, ts, price)
                 self.position = PositionType.NONE  # ポジションを更新
                 # 【報酬】
-                reward -= self.cost_contract  # 約定コスト
+                reward -= self.COST_CONTRACT  # 約定コスト
                 reward += profit  # 含み損益分そっくり報酬
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
             if self.position != PositionType.NONE:
                 # 含み益があれば幾分かを報酬に
-                reward += profit * self.ratio_profit_hold
+                reward += profit * self.RATIO_PROFIT_HOLD
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
@@ -234,8 +235,8 @@ class TrainingEnv(gym.Env):
         info = {}
         if len(self.df_tick) - 1 <= self.row:
             if self.posman.hasPosition(self.code):
-                reward -= self.cost_contract  # 約定コスト
-                reward += profit * (1 - self.ratio_profit_hold)  # 残りの含み損益分
+                reward -= self.COST_CONTRACT  # 約定コスト
+                reward += profit * (1 - self.RATIO_PROFIT_HOLD)  # 残りの含み損益分
                 self.posman.closePosition(self.code, ts, price, "強制返済")
                 self.position = PositionType.NONE  # ポジションを更新
 
@@ -254,7 +255,7 @@ class TrainingEnv(gym.Env):
         self.row += 1
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff, profit], dtype=np.float32)
+        market = np.array([price, diff_vwap, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "position": position}
 

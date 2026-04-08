@@ -69,15 +69,16 @@ class TrainingEnv(gym.Env):
         【観測値】- VecNormalize Wrapper を使用する前提
         [market]
         1. Price（株価）
-        2. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
-        3. Profit（含み損益）
+        2. MA1（短周期移動平均）
+        3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
+        4. Profit（含み損益）
         [position]
-        4. SHORT
-        5. NONE
-        6. LONG
+        5. SHORT
+        6. NONE
+        7. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -107,7 +108,7 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        return self.df_tick.iloc[row][["Time", "Price", "DiffVWAP"]]
+        return self.df_tick.iloc[row][["Time", "Price", "MA1", "DiffVWAP"]]
 
     def get_reward(self) -> pd.DataFrame:
         """
@@ -160,11 +161,11 @@ class TrainingEnv(gym.Env):
         self.init_status()
 
         # データフレームの最初の行のデータを取得
-        _, price, diff_vwap = self.get_data(0)
+        _, price, ma1, diff_vwap = self.get_data(0)
         profit = 0
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff_vwap, profit], dtype=np.float32)
+        market = np.array([price, diff_vwap, ma1, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
         obs = {"market": market, "position": position}
 
@@ -178,7 +179,7 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # データフレームからデータを一行分取得
-        ts, price, diff_vwap = self.get_data(self.row)
+        ts, price, ma1, diff_vwap = self.get_data(self.row)
         # 含み損益の取得
         profit = self.posman.getProfit(self.code, price)
         # 初期報酬
@@ -255,7 +256,7 @@ class TrainingEnv(gym.Env):
         self.row += 1
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff_vwap, profit], dtype=np.float32)
+        market = np.array([price, ma1, diff_vwap, profit], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "position": position}
 

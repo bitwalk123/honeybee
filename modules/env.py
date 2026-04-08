@@ -144,11 +144,12 @@ class TrainingEnv(gym.Env):
     def reset(self, seed=None, options=None):
         """
         環境のリセット処理
-        :param seed:
-        :param options:
-        :return:
+        :param seed: 乱数シードの設定
+        :param options: 追加オプション
+        :return: observation, info
         """
-        # Mandatory: seed the random number generator
+
+        # Gymnasiumの仕様に従ってseedを設定し、乱数生成器を取得
         super().reset(seed=seed)
 
         # データフレームの最初の行のデータを取得

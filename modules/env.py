@@ -37,7 +37,7 @@ class TrainingEnv(gym.Env):
         # 報酬保持用辞書 → 最後にデータフレーム化
         self.dict_reward = defaultdict(list)
         # 報酬パラメータ
-        self.ratio_profit_hold = 0.015  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.ratio_profit_hold = 0.012  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
         # ====== インスタンス変数の初期化 ======

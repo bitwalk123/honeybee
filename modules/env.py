@@ -51,7 +51,7 @@ class TrainingEnv(gym.Env):
         self.posman = posman = PositionManager()
         posman.initPosition([self.code])
 
-        # Define action_space（行動空間）
+        # ====== Define action_space（行動空間） ======
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
@@ -64,7 +64,7 @@ class TrainingEnv(gym.Env):
 
         print(df_tick.tail())
 
-        # Define observation_space（観測値空間）
+        # ====== Define observation_space（観測値空間） ======
         """
         【観測値】- VecNormalize Wrapper を使用する前提
         [market]

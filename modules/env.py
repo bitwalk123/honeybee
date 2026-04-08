@@ -36,7 +36,7 @@ class TrainingEnv(gym.Env):
 
         # 報酬関連
         self.pnl_total = 0
-        self.ratio_profit_hold = 0.05  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.ratio_profit_hold = 0.02  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.cost_contract = 1  # 約定手数料（スリッページ相当）
 
         # インスタンス変数の初期化

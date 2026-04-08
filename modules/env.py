@@ -112,10 +112,11 @@ class TrainingEnv(gym.Env):
         ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
         :return:
         """
-        df = pd.DataFrame(self.dict_reward)
+        # df = pd.DataFrame(self.dict_reward)
         # タイムスタンプを datetime.datetime 型に変換
-        df["DateTime"] = [datetime.datetime.fromtimestamp(t) for t in df["ts"]]
-        return df[["DateTime", "reward"]]
+        # df["DateTime"] = [datetime.datetime.fromtimestamp(t) for t in df["ts"]]
+        # return df[["DateTime", "reward"]]
+        return pd.DataFrame(self.dict_reward)
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -134,6 +135,8 @@ class TrainingEnv(gym.Env):
         self.position = PositionType.NONE
         self.profit: float = 0.0
         self.pnl_total: float = 0.0
+        # 報酬保持用辞書 → 最後にデータフレーム化
+        self.dict_reward = defaultdict(list)
         # ポジション・マネージャのリセットと初期化
         self.posman.reset()
         self.posman.initPosition([self.code])

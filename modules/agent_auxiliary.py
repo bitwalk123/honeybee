@@ -34,7 +34,7 @@ class InfoCallback(BaseCallback):
                 # 売買履歴のデータフレームを CSV 形式で保存
                 path_csv_transaction = os.path.join(
                     self.dir_logs,
-                    f"transaction_{self.n_episode: 06d}.csv"
+                    f"transaction_{self.n_episode:06d}.csv"
                 )
                 df_transaction.to_csv(path_csv_transaction, index=False)
 
@@ -43,7 +43,7 @@ class InfoCallback(BaseCallback):
                 # 報酬のデータフレームを CSV 形式で保存
                 path_csv_reward = os.path.join(
                     self.dir_logs,
-                    f"reward_{self.n_episode: 06d}.csv"
+                    f"reward_{self.n_episode:06d}.csv"
                 )
                 df_reward.to_csv(path_csv_reward, index=False)
 

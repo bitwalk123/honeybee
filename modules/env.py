@@ -67,8 +67,8 @@ class TrainingEnv(gym.Env):
         【観測値】- VecNormalize Wrapper を使用する前提
         [market]
         1. Price（株価）
-        2. Profit（含み損益）
-        3. Diff（乖離率 - (MA1 - VWAP) / VWAP）
+        2. Diff（乖離率 - (MA1 - VWAP) / VWAP）
+        3. Profit（含み損益）
         [position]
         4. SHORT
         5. NONE
@@ -151,6 +151,7 @@ class TrainingEnv(gym.Env):
         # データフレームの最初の行のデータを取得
         _, price, diff = self.get_data(0)
         profit = 0
+        self.init_status()
 
         # ====== 観測値（状態） ======
         market = np.array([price, diff, profit], dtype=np.float32)
@@ -158,7 +159,6 @@ class TrainingEnv(gym.Env):
         obs = {"market": market, "position": position}
 
         info = {}  # Additional debug info
-        self.init_status()
         return obs, info
 
     def step(self, action):

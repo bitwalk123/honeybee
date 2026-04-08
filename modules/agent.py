@@ -4,7 +4,7 @@ from sb3_contrib import MaskablePPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
-from env import TrainingEnv
+from modules.env import TrainingEnv
 from funcs.io import get_sample_data, prep_dir_logs_monitor, update_new_dir
 from funcs.plot import learning_curve
 from modules.agent_auxiliary import InfoCallback

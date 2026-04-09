@@ -14,7 +14,7 @@ if __name__ == "__main__":
     agent = MyPPOAgent(dir_logs, tb_logs)
 
     # 学習
-    n_episode = 10  # 概ねのエピソード数
+    n_episode = 100  # 概ねのエピソード数
     agent.train(file_csv, n_episode)
 
     # 推論（現在は同じファイルで）

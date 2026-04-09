@@ -32,7 +32,7 @@ class TrainingEnv(gym.Env):
         self.render_mode = render_mode
 
         # ====== 報酬パラメータ ======
-        self.RATIO_PROFIT_HOLD: float = 0.02  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
 
         # 報酬関連の設定
@@ -108,7 +108,8 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        return self.df_tick.iloc[row][["Time", "Price", "MA1", "DiffVWAP"]]
+        list_name = ["Time", "Price", "MA1", "DiffVWAP"]
+        return tuple(self.df_tick.iloc[row][list_name])
 
     def get_reward(self) -> pd.DataFrame:
         """
@@ -162,6 +163,7 @@ class TrainingEnv(gym.Env):
 
         # データフレームの最初の行のデータを取得
         _, price, ma1, diff_vwap = self.get_data(0)
+        # 含み損益
         profit = 0
 
         # ====== 観測値（状態） ======

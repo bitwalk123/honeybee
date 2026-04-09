@@ -33,6 +33,7 @@ class TrainingEnv(gym.Env):
         # ====== 報酬パラメータ ======
         self.PERIOD_WARMUP: int = 300
         self.PERIOD_MA_1: int = 30
+        self.N_MINUS_MAX: int = 300
         self.RATIO_PROFIT_HOLD: float = 0.015  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
@@ -78,13 +79,14 @@ class TrainingEnv(gym.Env):
         2. MA1（短周期移動平均）
         3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         4. Profit（含み損益）
+        5. penalty_negative（含み損保持ペナルティ）
         [position]
-        5. SHORT
-        6. NONE
-        7. LONG
+        a. SHORT
+        b. NONE
+        c. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -186,7 +188,7 @@ class TrainingEnv(gym.Env):
         profit = 0
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff_vwap, ma1, profit], dtype=np.float32)
+        market = np.array([price, diff_vwap, ma1, profit, 0.0], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
         obs = {"market": market, "position": position}
 
@@ -255,6 +257,14 @@ class TrainingEnv(gym.Env):
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
+        # ====== 含み益評価 ======
+        if profit < 0:
+            self.count_negative += 1
+        else:
+            self.count_negative = 0
+        penalty_negative = - float(self.count_negative) / self.N_MINUS_MAX
+        reward += penalty_negative
+
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
@@ -286,7 +296,10 @@ class TrainingEnv(gym.Env):
         self.row += 1
 
         # ====== 観測値（状態） ======
-        market = np.array([price, ma1, diff_vwap, profit], dtype=np.float32)
+        market = np.array(
+            [price, ma1, diff_vwap, profit, penalty_negative],
+            dtype=np.float32
+        )
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "position": position}
 

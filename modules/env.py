@@ -2,9 +2,7 @@
 Reference:
 https://gymnasium.farama.org/introduction/create_custom_env/
 """
-import datetime
 from collections import defaultdict
-from typing import Any
 
 import gymnasium as gym
 import pandas as pd

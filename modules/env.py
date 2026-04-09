@@ -31,6 +31,7 @@ class TrainingEnv(gym.Env):
         self.render_mode = render_mode
 
         # ====== 報酬パラメータ ======
+        self.PERIOD_MA_1 = 30
         self.RATIO_PROFIT_HOLD: float = 0.015  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
 
@@ -54,10 +55,13 @@ class TrainingEnv(gym.Env):
         self.action_space = spaces.Discrete(n_action_space)
 
         # 必要な観測値を追加
-        ma1 = MovingAverage(window_size=30)
+        # 短周期移動平均 MA1
+        ma1 = MovingAverage(window_size=self.PERIOD_MA_1)
         df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
+        # 出来高加重平均価格
         vwap = VWAP()
         df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
+        # 乖離度 (MA1 - VWAP) / VWAP
         df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
 
         print(df_tick.tail())

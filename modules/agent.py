@@ -80,7 +80,10 @@ class MyPPOAgent:
         # ====== 報酬トレンド/学習曲線 ======
         # 学習ログを読込（最初の行の読み込みを除外）
         df_reward = pd.read_csv(self.file_log, skiprows=[0])
-        learning_curve(df_reward, self.file_csv)
+        try:
+            learning_curve(df_reward, self.file_csv)
+        except ValueError as e:
+            print(e)
 
     def infer(self, file_csv: str):
         if self.model is None:

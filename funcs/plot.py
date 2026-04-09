@@ -13,5 +13,5 @@ def learning_curve(df: pd.DataFrame, subtitle: str):
     ax.grid()
     plt.tight_layout()
     plt.savefig("trend_reward.png")
-    plt.show()
+    #plt.show()
     plt.close()

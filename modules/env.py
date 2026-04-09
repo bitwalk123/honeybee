@@ -37,13 +37,15 @@ class TrainingEnv(gym.Env):
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 
         # 定数
-        self.MAX_TRADE: int = 200
+        self.MAX_TRADE: int = 200  # 約定数上限
 
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数
+        self.count_negative: int = 0  # 含み損の継続カウンタ
+        # 報酬系
         self.pnl_total = 0  # エピソードにおける総報酬
         self.dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
 
@@ -138,10 +140,13 @@ class TrainingEnv(gym.Env):
         初期化処理
         :return:
         """
+        # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数
+        self.count_negative: int = 0  # 含み損の継続カウンタ
+        # 報酬系
         self.pnl_total = 0  # エピソードにおける総報酬
         self.dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
 
@@ -248,6 +253,8 @@ class TrainingEnv(gym.Env):
                 # 建玉があれば強制返済
                 self.posman.closePosition(self.CODE, ts, price, "強制返済")
                 self.position = PositionType.NONE  # ポジションを更新
+                self.n_trade += 1  # 取引回数の更新
+                # 【報酬】
                 reward -= self.COST_CONTRACT  # 約定コスト
                 reward += profit * (1 - self.RATIO_PROFIT_HOLD)  # 残りの含み損益分
 
@@ -257,6 +264,7 @@ class TrainingEnv(gym.Env):
             info["transaction"] = self.get_transaction_result()
             # 報酬情報（データフレーム）
             info["reward"] = self.get_reward()
+            print(f"約定回数 : {self.n_trade}")
 
         # モデル報酬の保持（分析用）
         self.dict_reward["ts"].append(ts)

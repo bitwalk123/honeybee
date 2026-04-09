@@ -2,7 +2,7 @@ from modules.agent import MyPPOAgent
 
 if __name__ == "__main__":
     # 学習に使用するティックデータ
-    file_csv: str = "20260408_9984.csv"
+    file_csv: str = "20260409_9984.csv"
 
     # ログフォルダ
     dir_logs = "./logs/"

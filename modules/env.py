@@ -31,7 +31,8 @@ class TrainingEnv(gym.Env):
         self.render_mode = render_mode
 
         # ====== 報酬パラメータ ======
-        self.PERIOD_MA_1 = 30
+        self.PERIOD_WARMUP: int = 300
+        self.PERIOD_MA_1: int = 30
         self.RATIO_PROFIT_HOLD: float = 0.015  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
@@ -91,10 +92,21 @@ class TrainingEnv(gym.Env):
         """
         行動マスク
         【マスク】
+        - ウォーミングアップ期間 → 強制 HOLD
         - ナンピン取引の禁止
-        :return:
+
+        （参考）
+        class ActionType(Enum):
+            HOLD = 0
+            BUY = 1
+            SELL = 2
+
+        :return: mask
         """
-        if self.position == PositionType.NONE:
+        if self.row < self.PERIOD_WARMUP:
+            # ウォーミングアップ期間 → 強制 HOLD
+            mask = np.array([True, False, False], dtype=np.bool_)
+        elif self.position == PositionType.NONE:
             # 建玉なし → 取りうるアクション: HOLD, BUY, SELL
             mask = np.array([True, True, True], dtype=np.bool_)
         elif self.position == PositionType.LONG:

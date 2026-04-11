@@ -38,7 +38,7 @@ class MyPPOAgent:
 
         return env_mon
 
-    def train(self, path_model: str, file_csv: str, n_episode: int = 3, flag_new=True):
+    def train(self, path_model: str, file_csv: str, n_episode: int = 3, flag_new=False):
         """
         学習（訓練）
         :return:

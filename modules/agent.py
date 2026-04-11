@@ -1,3 +1,5 @@
+import os.path
+
 import numpy as np
 import pandas as pd
 from sb3_contrib import MaskablePPO
@@ -24,7 +26,7 @@ class MyPPOAgent:
         update_new_dir(self.tb_logs)
 
         # モデル用インスタンス
-        self.model = None
+        # self.model = None
         # VecNormalizeの内部状態の保存用
         self.file_pkl = "vecnormalize.pkl"
 
@@ -36,7 +38,7 @@ class MyPPOAgent:
 
         return env_mon
 
-    def train(self, file_csv: str, n_episode: int = 3):
+    def train(self, path_model: str, file_csv: str, n_episode: int = 3, flag_new=True):
         """
         学習（訓練）
         :return:
@@ -59,21 +61,35 @@ class MyPPOAgent:
             norm_obs_keys=["market"]
         )
 
-        # ====== モデル生成 ======
-        self.model = MaskablePPO(
-            "MultiInputPolicy",
-            env_train,
-            verbose=1,
-            tensorboard_log=self.tb_logs,
-        )
+        if os.path.exists(path_model) and not flag_new:
+            model = MaskablePPO.load(
+                path_model,
+                env=env_train,
+                verbose=1,
+                tensorboard_log=self.tb_logs,
+            )
+            print(f"model is loaded from {path_model}.")
+        else:
+            # ====== モデル生成 ======
+            model = MaskablePPO(
+                "MultiInputPolicy",
+                env=env_train,
+                verbose=1,
+                tensorboard_log=self.tb_logs,
+            )
+            print(f"new model is created.")
 
         # ====== 学習実施 ======
         print("Begin training...")
         callback = InfoCallback(dir_logs=self.dir_logs)
-        self.model.learn(
+        model.learn(
             total_timesteps=timesteps,
             callback=callback,
         )
+        # モデルの保存
+        model.save(path_model)
+        print(f"model is saved to {path_model}.")
+
         # 推論時に利用できるように VecNormalize の内部状態を保存
         env_train.save(self.file_pkl)
 
@@ -85,12 +101,7 @@ class MyPPOAgent:
         except ValueError as e:
             print(e)
 
-    def infer(self, file_csv: str):
-        if self.model is None:
-            # モデルが空でないかチェック
-            print("no trained model available!")
-            return
-
+    def infer(self, path_model: str, file_csv: str):
         # 銘柄コードとティックデータのデータフレームを取得
         self.code, self.df = get_sample_data(file_csv)
 
@@ -102,6 +113,17 @@ class MyPPOAgent:
         env_infer = VecNormalize.load(self.file_pkl, env_dummy)  # 学習情報を読み込む
         env_infer.training = False
         env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
+
+        if os.path.exists(path_model):
+            model = MaskablePPO.load(
+                path_model,
+                env=env_infer,
+                verbose=1,
+            )
+            print(f"model is loaded from {path_model}.")
+        else:
+            print(f"{path_model} does not exist!")
+            return
 
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
@@ -121,7 +143,7 @@ class MyPPOAgent:
             raw_mask = env_infer.env_method("action_masks")[idx]  # 1D mask
             action_masks = np.array([raw_mask], dtype=np.bool_)  # バッチ次元を付与
             # マスク情報付きで推論
-            action, _states = self.model.predict(
+            action, _states = model.predict(
                 obs,
                 action_masks=action_masks,
                 deterministic=True

@@ -1,4 +1,5 @@
 import os.path
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -50,12 +51,12 @@ class MyPPOAgent:
         if flag_new:
             print("deleting existing dir_logs...")
             if os.path.exists(self.dir_logs):
-                os.remove(self.dir_logs)
+                shutil.rmtree(self.dir_logs)
                 print(f"deleted {self.dir_logs}.")
 
             print("deleting existing tb_logs...")
             if os.path.exists(self.tb_logs):
-                os.remove(self.tb_logs)
+                shutil.rmtree(self.tb_logs)
                 print(f"deleted {self.tb_logs}.")
 
             print("deleting existing model...")

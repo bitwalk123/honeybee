@@ -69,8 +69,7 @@ class MyPPOAgent:
         学習（訓練）
         :return:
         """
-        # 銘柄コードとティックデータのデータフレームを取得
-        # self.code, self.df = get_sample_data(file_csv)
+        # 指定銘柄コードのティックデータのデータフレームを取得
         self.df = get_excel_sheet(file_excel, self.code)
         unit_episode = len(self.df)
         # 学習用ステップ数の設定
@@ -135,9 +134,9 @@ class MyPPOAgent:
         # except ValueError as e:
         #    print(e)
 
-    def infer(self, path_model: str, file_csv: str):
-        # 銘柄コードとティックデータのデータフレームを取得
-        self.code, self.df = get_sample_data(file_csv)
+    def infer(self, file_excel: str):
+        # 指定銘柄コードのティックデータのデータフレームを取得
+        self.df = get_excel_sheet(file_excel, self.code)
 
         # ====== 学習後の推論用環境の準備 ======
         # 2. DummyVecEnv Wrapper
@@ -148,15 +147,15 @@ class MyPPOAgent:
         env_infer.training = False
         env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
 
-        if os.path.exists(path_model):
+        if os.path.exists(self.path_model):
             model = MaskablePPO.load(
-                path_model,
+                self.path_model,
                 env=env_infer,
                 verbose=1,
             )
-            print(f"model is loaded from {path_model}.")
+            print(f"model is loaded from {self.path_model}.")
         else:
-            print(f"{path_model} does not exist!")
+            print(f"{self.path_model} does not exist!")
             return
 
         # 特定環境を指定するインデックス

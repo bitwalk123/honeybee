@@ -24,15 +24,13 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
-    list_excel = list_excel_all[-1:]
+    list_excel = list_excel_all[-2:-1]
 
     # 学習
     n_episode = 10  # 概ねのエピソード数
     for file_excel in list_excel:
         agent.train(file_excel, n_episode)
 
-    '''
     # 推論
-    file_csv = list_csv[-1]
-    agent.infer(path_model, file_csv)
-    '''
+    file_excel = list_excel[-1]
+    agent.infer(file_excel)

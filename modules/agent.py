@@ -31,11 +31,6 @@ class MyPPOAgent:
         self.file_csv: str = ""
         self.df: pd.DataFrame = pd.DataFrame()
 
-        # Monitor 用ログの準備
-        # self.file_log = prep_dir_logs_monitor(self.dir_logs)
-        # TensorBoard 用ログの準備
-        # update_new_dir(self.tb_logs)
-
         # モデルが格納されるディレクトリ
         dir_model = "models"
         os.makedirs(dir_model, exist_ok=True)

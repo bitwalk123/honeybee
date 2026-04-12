@@ -59,7 +59,7 @@ class TrainingEnv(gym.Env):
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
-        # 必要な観測値を追加
+        # ====== 必要な観測値を追加 ======
         # 短周期移動平均 MA1
         ma1 = MovingAverage(window_size=self.PERIOD_MA_1)
         df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
@@ -69,7 +69,7 @@ class TrainingEnv(gym.Env):
         # 乖離度 (MA1 - VWAP) / VWAP
         df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
 
-        # 寄り付き時のタイムスタンプと価格の取得
+        # 寄り付き時のタイムスタンプと始値の取得
         self.ts0, self.price0, _, _ = self.get_data(0)
 
         print(df_tick.tail())
@@ -138,10 +138,6 @@ class TrainingEnv(gym.Env):
         ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
         :return:
         """
-        # df = pd.DataFrame(self.dict_reward)
-        # タイムスタンプを datetime.datetime 型に変換
-        # df["DateTime"] = [datetime.datetime.fromtimestamp(t) for t in df["ts"]]
-        # return df[["DateTime", "reward"]]
         return pd.DataFrame(self.dict_reward)
 
     def get_transaction_result(self) -> pd.DataFrame:

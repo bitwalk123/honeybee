@@ -9,7 +9,7 @@ class AgentActionType(Enum):
     BOTH = auto()
 
 if __name__ == "__main__":
-    agent_action_type = AgentActionType.INFER
+    agent_action_type = AgentActionType.TRAIN
 
     path_model = os.path.join("models", "model_test.zip")
 

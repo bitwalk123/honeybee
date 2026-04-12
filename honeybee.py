@@ -9,7 +9,7 @@ class AgentActionType(Enum):
     BOTH = auto()
 
 if __name__ == "__main__":
-    agent_action_type = AgentActionType.INFER
+    agent_action_type = AgentActionType.TRAIN
 
     path_model = os.path.join("models", "model_test.zip")
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     if agent_action_type == AgentActionType.TRAIN:
         # 学習
-        n_episode = 10  # 概ねのエピソード数
+        n_episode = 20  # 概ねのエピソード数
         for file_csv in list_csv:
             agent.train(path_model, file_csv, n_episode)
 

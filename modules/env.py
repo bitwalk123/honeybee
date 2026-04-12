@@ -43,6 +43,8 @@ class TrainingEnv(gym.Env):
 
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
+        # 寄り付き価格の取得
+        _, self.price0, _, _ = self.get_data(0)
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数
@@ -156,6 +158,8 @@ class TrainingEnv(gym.Env):
         """
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
+        # 寄り付き価格の取得
+        _, self.price0, _, _ = self.get_data(0)
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数
@@ -188,7 +192,16 @@ class TrainingEnv(gym.Env):
         profit = 0
 
         # ====== 観測値（状態） ======
-        market = np.array([price, diff_vwap, ma1, profit, 0.0], dtype=np.float32)
+        market = np.array(
+            [
+                price - self.price0,
+                ma1 - self.price0,
+                diff_vwap,
+                profit,
+                0.0
+            ],
+            dtype=np.float32
+        )
         position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
         obs = {"market": market, "position": position}
 
@@ -297,7 +310,13 @@ class TrainingEnv(gym.Env):
 
         # ====== 観測値（状態） ======
         market = np.array(
-            [price, ma1, diff_vwap, profit, penalty_negative],
+            [
+                price - self.price0,
+                ma1 - self.price0,
+                diff_vwap,
+                profit,
+                penalty_negative
+            ],
             dtype=np.float32
         )
         position = position_to_onehot(self.position).astype(np.float32)

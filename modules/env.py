@@ -43,8 +43,6 @@ class TrainingEnv(gym.Env):
 
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
-        # 寄り付き価格の取得
-        _, self.price0, _, _ = self.get_data(0)
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数
@@ -70,6 +68,9 @@ class TrainingEnv(gym.Env):
         df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
         # 乖離度 (MA1 - VWAP) / VWAP
         df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
+
+        # 寄り付き時のタイムスタンプと価格の取得
+        self.ts0, self.price0, _, _ = self.get_data(0)
 
         print(df_tick.tail())
 
@@ -158,8 +159,6 @@ class TrainingEnv(gym.Env):
         """
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
-        # 寄り付き価格の取得
-        _, self.price0, _, _ = self.get_data(0)
         self.position: PositionType = PositionType.NONE  # ポジション
         self.profit: float = 0.0  # 含み損益
         self.n_trade: int = 0  # 約定回数

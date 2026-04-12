@@ -104,10 +104,10 @@ class MyPPOAgent:
         self.code, self.df = get_sample_data(file_csv)
 
         # ====== 学習後の推論用環境の準備 ======
-        # 3. DummyVecEnv Wrapper
+        # 2. DummyVecEnv Wrapper
         env_dummy = DummyVecEnv([self.make_env])
 
-        # 4. VecNormalize Wrapper
+        # 3. VecNormalize Wrapper
         env_infer = VecNormalize.load(self.file_pkl, env_dummy)  # 学習情報を読み込む
         env_infer.training = False
         env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
@@ -139,6 +139,7 @@ class MyPPOAgent:
         while not episode_over:
             # VecEnv では action_masks を env_method で取得する
             raw_mask = env_infer.env_method("action_masks")[idx]  # 1D mask
+            # print(raw_mask)
             action_masks = np.array([raw_mask], dtype=np.bool_)  # バッチ次元を付与
             # マスク情報付きで推論
             action, _states = model.predict(
@@ -149,6 +150,7 @@ class MyPPOAgent:
             # 環境でステップ処理
             action = np.array([action])  # VecEnv では複数環境分の配列
             obs, reward, done, info = env_infer.step(action)
+            # print(obs, reward, done, info)
             total_reward += reward[idx]
             episode_over = done[idx]
         else:

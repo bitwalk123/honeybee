@@ -9,8 +9,6 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from funcs.excel import get_excel_sheet
 from modules.env import TrainingEnv
-from funcs.io import get_sample_data, prep_dir_logs_monitor, update_new_dir
-from funcs.plot import learning_curve
 from modules.agent_auxiliary import InfoCallback
 
 
@@ -132,13 +130,7 @@ class MyPPOAgent:
         env_train.save(self.path_normalize)
         print(f"VecNormalize is saved to {self.path_normalize}.")
 
-        # ====== 報酬トレンド/学習曲線 ======
-        # 学習ログを読込（最初の行の読み込みを除外）
-        # df_reward = pd.read_csv(self.file_log, skiprows=[0])
-        # try:
-        #    learning_curve(df_reward, self.file_csv)
-        # except ValueError as e:
-        #    print(e)
+        env_train.close()
 
     def infer(self, file_excel: str):
         # 指定銘柄コードのティックデータのデータフレームを取得

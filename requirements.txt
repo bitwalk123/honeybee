@@ -25,6 +25,7 @@ cycler
 debugpy
 decorator
 defusedxml
+et_xmlfile
 executing
 Farama-Notifications
 fastjsonschema
@@ -91,6 +92,7 @@ nvidia-nccl-cu13
 nvidia-nvjitlink
 nvidia-nvshmem-cu13
 nvidia-nvtx
+openpyxl
 packaging
 pandas
 pandocfilters

@@ -25,8 +25,6 @@ class MyPPOAgent:
         # TensorBoard 用ログの準備
         update_new_dir(self.tb_logs)
 
-        # モデル用インスタンス
-        # self.model = None
         # VecNormalizeの内部状態の保存用
         self.file_pkl = "vecnormalize.pkl"
 

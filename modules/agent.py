@@ -48,6 +48,16 @@ class MyPPOAgent:
 
         # print(self.path_model, self.path_normalize)
         if flag_new:
+            print("deleting existing dir_logs...")
+            if os.path.exists(self.dir_logs):
+                os.remove(self.dir_logs)
+                print(f"deleted {self.dir_logs}.")
+
+            print("deleting existing tb_logs...")
+            if os.path.exists(self.tb_logs):
+                os.remove(self.tb_logs)
+                print(f"deleted {self.tb_logs}.")
+
             print("deleting existing model...")
             if os.path.exists(self.path_model):
                 os.remove(self.path_model)

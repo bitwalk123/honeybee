@@ -260,7 +260,14 @@ class TrainingEnv(gym.Env):
             self.count_negative += 1
         else:
             self.count_negative = 0
-        penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
+
+        if self.count_negative < self.N_MINUS_MAX:
+            penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
+        else:
+            exponent = self.count_negative - self.N_MINUS_MAX + 1
+            growth_factor = 1.5
+            scale = 1
+            penalty_negative = -(growth_factor ** exponent - 1) * scale
         reward += penalty_negative
 
         # ====== エピソード終了判定 ======

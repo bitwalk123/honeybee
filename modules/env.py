@@ -83,7 +83,8 @@ class TrainingEnv(gym.Env):
         3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         4. Profit（含み損益）
         [counter]
-        1. count_negative # 含み損の継続カウンタ
+        1. n_trade（約定回数）
+        2. count_negative（含み損の継続カウンタ）
         [position]
         a. SHORT
         b. NONE
@@ -91,7 +92,7 @@ class TrainingEnv(gym.Env):
         """
         self.observation_space = spaces.Dict({
             "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),
-            "counter": spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
+            "counter": spaces.Box(low=0, high=np.inf, shape=(2,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -198,7 +199,7 @@ class TrainingEnv(gym.Env):
             ],
             dtype=np.float32
         )
-        counter = np.array([0], dtype=np.float32)
+        counter = np.array([0, 0], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "counter": counter, "position": position}
 
@@ -308,7 +309,13 @@ class TrainingEnv(gym.Env):
             ],
             dtype=np.float32
         )
-        counter = np.array([self.count_negative], dtype=np.float32)
+        counter = np.array(
+            [
+                self.n_trade,
+                self.count_negative
+            ],
+            dtype=np.float32
+        )
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {"market": market, "counter": counter, "position": position}
 

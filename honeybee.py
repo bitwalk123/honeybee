@@ -35,10 +35,14 @@ if __name__ == "__main__":
             print(file_excel)
 
     # 学習
-    n_episode = 100  # 概ねのエピソード数
-    for file_excel in list_excel:
+    for i, file_excel in enumerate(list_excel):
+        # 概ねのエピソード数
+        if i > 0:
+            n_episode = 20
+        else:
+            n_episode = 100
         agent.train(file_excel, n_episode)
 
-    # 推論
+    # 推論（確認用）
     file_excel = list_excel[-1]
     agent.infer(file_excel)

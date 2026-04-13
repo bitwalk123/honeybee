@@ -274,6 +274,10 @@ class TrainingEnv(gym.Env):
             print("### Losscut Penalty:", penalty_negative)
         reward += penalty_negative
 
+        # ======  モデル報酬の保持（分析用） ======
+        self.dict_reward["ts"].append(ts)
+        self.dict_reward["reward"].append(reward)
+
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
@@ -292,9 +296,6 @@ class TrainingEnv(gym.Env):
             info["reward"] = self.get_reward()
             print(f"約定回数 : {self.n_trade}")
 
-        # モデル報酬の保持（分析用）
-        self.dict_reward["ts"].append(ts)
-        self.dict_reward["reward"].append(reward)
 
         # ステップ（データフレームの行）更新
         self.row += 1

@@ -22,7 +22,7 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
-    list_excel = list_excel_all[-2:]
+    list_excel = list_excel_all[-6:]
 
     # 学習に渡す Excel リストが確かにリストになっているか確認
     if type(list_excel) is not list:

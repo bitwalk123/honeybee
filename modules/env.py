@@ -267,8 +267,8 @@ class TrainingEnv(gym.Env):
             exponent = self.count_negative - self.N_MINUS_MAX + 1
             growth_factor = 1.5
             scale = 1.0
-            penalty_negative = -(growth_factor ** exponent - 1) * scale
-            print("Losscut Penalty", penalty_negative)
+            penalty_negative = -(growth_factor ** exponent) * scale
+            print("### Losscut Penalty:", penalty_negative)
         reward += penalty_negative
 
         # ====== エピソード終了判定 ======

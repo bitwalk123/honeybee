@@ -24,11 +24,17 @@ if __name__ == "__main__":
     list_excel_all = sorted(glob.glob(path_excel))
     list_excel = list_excel_all[-1:]
 
-    # 学習
+    # 学習に渡す Excel リストが確かにリストになっているか確認
     if type(list_excel) is not list:
         print(f"list_excel is not list!")
         sys.exit()
+    else:
+        # 学習対象ファイル
+        print("学習対象ファイル")
+        for file_excel in list_excel:
+            print(file_excel)
 
+    # 学習
     n_episode = 100  # 概ねのエピソード数
     for file_excel in list_excel:
         agent.train(file_excel, n_episode)

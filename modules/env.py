@@ -271,12 +271,7 @@ class TrainingEnv(gym.Env):
             # ティックデータの末尾
             if self.posman.hasPosition(self.CODE):
                 # 建玉があれば強制返済
-                self.posman.closePosition(self.CODE, ts, price, "強制返済")
-                self.position = PositionType.NONE  # ポジションを更新
-                self.n_trade += 1  # 取引回数の更新
-                # 【報酬】
-                reward -= self.COST_CONTRACT  # 約定コスト
-                reward += profit * (1 - self.RATIO_PROFIT_HOLD)  # 残りの含み損益分
+                reward += self.position_close_force(ts, price, profit)
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
@@ -309,7 +304,14 @@ class TrainingEnv(gym.Env):
 
         return obs, reward, terminated, truncated, info
 
-    def position_close(self, ts, price, profit: float) -> int:
+    def position_close(self, ts: float, price: float, profit: float) -> int:
+        """
+        ポジション・クローズ
+        :param ts:
+        :param price:
+        :param profit:
+        :return:
+        """
         # ポジション管理
         self.posman.closePosition(self.CODE, ts, price)
         self.position = PositionType.NONE  # ポジションを更新
@@ -323,6 +325,24 @@ class TrainingEnv(gym.Env):
             # ロスカットに対して僅かな報酬付与
             r += float(self.count_negative) / self.N_MINUS_MAX
             self.count_negative = 0
+        return r
+
+    def position_close_force(self, ts: float, price: float, profit: float) -> int:
+        """
+        ポジション・クローズ（強制）
+        :param ts:
+        :param price:
+        :param profit:
+        :return:
+        """
+        # ポジション管理
+        self.posman.closePosition(self.CODE, ts, price, "強制返済")
+        self.position = PositionType.NONE  # ポジションを更新
+        self.n_trade += 1  # 取引回数の更新
+        # 【報酬】
+        r = 0
+        r -= self.COST_CONTRACT  # 約定コスト
+        r += profit  # 含み損益分そっくり報酬
         return r
 
     def render(self) -> None:

@@ -230,12 +230,7 @@ class TrainingEnv(gym.Env):
                 reward -= diff_vwap  # diff_vwap が負の時に買建すれば報酬
             elif self.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
-                self.posman.closePosition(self.CODE, ts, price)
-                self.position = PositionType.NONE  # ポジションを更新
-                self.n_trade += 1  # 取引回数の更新
-                # 【報酬】
-                reward -= self.COST_CONTRACT  # 約定コスト
-                reward += profit  # 含み損益分そっくり報酬
+                reward += self.position_close(ts, price, profit)
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.SELL:
@@ -250,12 +245,7 @@ class TrainingEnv(gym.Env):
                 reward += diff_vwap  # diff_vwap が正の時に売建すれば報酬
             elif self.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
-                self.posman.closePosition(self.CODE, ts, price)
-                self.position = PositionType.NONE  # ポジションを更新
-                self.n_trade += 1  # 取引回数の更新
-                # 【報酬】
-                reward -= self.COST_CONTRACT  # 約定コスト
-                reward += profit  # 含み損益分そっくり報酬
+                reward += self.position_close(ts, price, profit)
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
@@ -265,7 +255,7 @@ class TrainingEnv(gym.Env):
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
-        # ====== 含み益評価 ======
+        # ====== 連続含み益評価 ======
         if profit < 0:
             self.count_negative += 1
         else:
@@ -318,6 +308,22 @@ class TrainingEnv(gym.Env):
         obs = {"market": market, "position": position}
 
         return obs, reward, terminated, truncated, info
+
+    def position_close(self, ts, price, profit: float) -> int:
+        # ポジション管理
+        self.posman.closePosition(self.CODE, ts, price)
+        self.position = PositionType.NONE  # ポジションを更新
+        self.n_trade += 1  # 取引回数の更新
+        # 【報酬】
+        r = 0
+        r -= self.COST_CONTRACT  # 約定コスト
+        r += profit  # 含み損益分そっくり報酬
+        # 連続含み損
+        if self.count_negative > 0:
+            # ロスカットに対して僅かな報酬付与
+            r += float(self.count_negative) / self.N_MINUS_MAX
+            self.count_negative = 0
+        return r
 
     def render(self) -> None:
         # Implement visualization logic based on self.render_mode

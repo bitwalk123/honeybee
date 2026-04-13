@@ -1,6 +1,5 @@
 import glob
 import os
-from enum import Enum, auto
 
 from modules.agent import MyPPOAgent
 
@@ -22,10 +21,10 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
-    list_excel = list_excel_all[-21:-1]
+    list_excel = list_excel_all[-1]
 
     # 学習
-    n_episode = 10  # 概ねのエピソード数
+    n_episode = 100  # 概ねのエピソード数
     for file_excel in list_excel:
         agent.train(file_excel, n_episode)
 

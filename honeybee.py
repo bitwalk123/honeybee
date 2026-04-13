@@ -1,5 +1,6 @@
 import glob
 import os
+import sys
 
 from modules.agent import MyPPOAgent
 
@@ -22,9 +23,12 @@ if __name__ == "__main__":
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
     list_excel = list_excel_all[-1:]
-    print(list_excel)
 
     # 学習
+    if type(list_excel) is not list:
+        print(f"list_excel is not list!")
+        sys.exit()
+
     n_episode = 100  # 概ねのエピソード数
     for file_excel in list_excel:
         agent.train(file_excel, n_episode)

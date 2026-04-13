@@ -119,10 +119,27 @@ class MyPPOAgent:
         # ====== 学習実施 ======
         print("Begin training...")
         callback = InfoCallback(dir_logs=self.dir_logs)
-        model.learn(
-            total_timesteps=timesteps,
-            callback=callback,
-        )
+        try:
+            model.learn(
+                total_timesteps=timesteps,
+                callback=callback,
+            )
+        except ValueError as e:
+            import traceback
+            traceback.print_exc()
+            print("learn failed:", e)
+
+            # model から VecEnv を取得（VecNormalize / DummyVecEnv が返る）
+            venv = model.get_env()
+
+            # 1) VecEnv 経由で安全に呼ぶ（推奨）
+            # indices=0 で 0 番目の環境だけ呼ぶ
+            try:
+                obs_list = venv.env_method('get_obs', indices=0)
+                print("env_method get_obs:", obs_list)
+            except Exception as ex:
+                print("env_method failed:", ex)
+
         # モデルの保存
         model.save(self.path_model)
         print(f"model is saved to {self.path_model}.")

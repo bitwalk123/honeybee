@@ -2,6 +2,9 @@
 Reference:
 https://gymnasium.farama.org/introduction/create_custom_env/
 """
+import glob
+import os
+import pickle
 from collections import defaultdict
 
 import gymnasium as gym
@@ -96,6 +99,9 @@ class TrainingEnv(gym.Env):
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
+        # デバッグ用観測値
+        self.obs = {}
+
     def action_masks(self) -> np.ndarray:
         """
         行動マスク
@@ -135,6 +141,9 @@ class TrainingEnv(gym.Env):
         """
         list_name = ["Time", "Price", "MA1", "DiffVWAP"]
         return tuple(self.df_tick.iloc[row][list_name])
+
+    def get_obs(self):
+        return self.obs
 
     def get_reward(self) -> pd.DataFrame:
         """
@@ -263,15 +272,7 @@ class TrainingEnv(gym.Env):
             self.count_negative += 1
         else:
             self.count_negative = 0
-
-        if self.count_negative < self.N_MINUS_MAX:
-            penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
-        else:
-            exponent = self.count_negative - self.N_MINUS_MAX + 1
-            growth_factor = 1.5
-            scale = 1.0
-            penalty_negative = -(growth_factor ** exponent) * scale
-            print("### Losscut Penalty:", penalty_negative)
+        penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
         reward += penalty_negative
 
         # ======  モデル報酬の保持（分析用） ======
@@ -296,7 +297,6 @@ class TrainingEnv(gym.Env):
             info["reward"] = self.get_reward()
             print(f"約定回数 : {self.n_trade}")
 
-
         # ステップ（データフレームの行）更新
         self.row += 1
 
@@ -318,7 +318,7 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         position = position_to_onehot(self.position).astype(np.float32)
-        obs = {"market": market, "counter": counter, "position": position}
+        self.obs = obs = {"market": market, "counter": counter, "position": position}
 
         return obs, reward, terminated, truncated, info
 

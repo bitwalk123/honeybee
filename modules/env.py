@@ -86,9 +86,9 @@ class TrainingEnv(gym.Env):
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
         [position]
-        a. SHORT
-        b. NONE
-        c. LONG
+        1. SHORT
+        2. NONE
+        3. LONG
         """
         self.observation_space = spaces.Dict({
             "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),

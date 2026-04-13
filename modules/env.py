@@ -82,14 +82,16 @@ class TrainingEnv(gym.Env):
         2. MA1（短周期移動平均）
         3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         4. Profit（含み損益）
-        5. penalty_negative（含み損保持ペナルティ）
+        [counter]
+        1. count_negative # 含み損の継続カウンタ
         [position]
         a. SHORT
         b. NONE
         c. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),
+            "counter": spaces.Box(low=0, high=np.inf, shape=(1,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -189,16 +191,16 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                price - self.price0,
-                ma1 - self.price0,
-                diff_vwap,
-                profit,
-                0.0
+                0.0,
+                0.0,
+                0.0,
+                0.0,
             ],
             dtype=np.float32
         )
-        position = position_to_onehot(self.position).astype(np.float32)  # shape (3,)
-        obs = {"market": market, "position": position}
+        counter = np.array([0], dtype=np.float32)
+        position = position_to_onehot(self.position).astype(np.float32)
+        obs = {"market": market, "counter": counter, "position": position}
 
         info = {}  # Additional debug info
         return obs, info
@@ -303,12 +305,12 @@ class TrainingEnv(gym.Env):
                 ma1 - self.price0,
                 diff_vwap,
                 profit,
-                penalty_negative
             ],
             dtype=np.float32
         )
+        counter = np.array([self.count_negative], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
-        obs = {"market": market, "position": position}
+        obs = {"market": market, "counter": counter, "position": position}
 
         return obs, reward, terminated, truncated, info
 

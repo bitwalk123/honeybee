@@ -94,7 +94,7 @@ class MyPPOAgent:
                 env_dummy,
                 norm_obs=True,
                 norm_reward=True,
-                norm_obs_keys=["market"]
+                norm_obs_keys=["market", "counter"]
             )
 
         if os.path.exists(self.path_model):

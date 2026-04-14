@@ -1,5 +1,6 @@
 import os.path
 import shutil
+from collections import defaultdict
 from typing import Any
 
 import numpy as np
@@ -150,7 +151,7 @@ class MyPPOAgent:
 
         env_train.close()
 
-    def infer(self, file_excel: str) -> dict[Any, Any]:
+    def infer(self, file_excel: str) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得
         self.df = get_excel_sheet(file_excel, self.code)
 
@@ -194,6 +195,8 @@ class MyPPOAgent:
         # ====== 推論実施 ======
         print("Begin inference...")
         dict_result = dict()
+        dict_technical = defaultdict(list)
+
         info = []
         while not episode_over:
             # VecEnv では action_masks を env_method で取得する
@@ -212,6 +215,11 @@ class MyPPOAgent:
             # print(obs, reward, done, info)
             total_reward += reward[idx]
             episode_over = done[idx]
+            if "technical" in info[idx]:
+                d = info[idx]["technical"]
+                for key in d.keys():
+                    dict_technical[key].append(d[key])
+
         else:
             dict_info = info[idx]
             # 取引結果を出力
@@ -220,4 +228,4 @@ class MyPPOAgent:
 
         # 環境の終了処理
         env_infer.close()
-        return dict_result
+        return dict_result, dict_technical

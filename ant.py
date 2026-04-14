@@ -1,3 +1,4 @@
+import datetime
 import glob
 import os
 import sys
@@ -56,9 +57,11 @@ if __name__ == "__main__":
     # ====== 推論 ======
     # Excelファイル名、報酬、収益、約定回数 用 辞書
     dict_transaction = defaultdict(list)
+    # テクニカルデータを格納する辞書
+    dict_technical = {}
     # Excelファイル毎のループ
     for file_excel in list_excel:
-        dict_result = agent.infer(file_excel)
+        dict_result, dict_technical = agent.infer(file_excel)
         if "transaction" in dict_result:
             get_transaction(dict_transaction)
 
@@ -66,6 +69,11 @@ if __name__ == "__main__":
     df_transaction = pd.DataFrame(dict_transaction)
     # インデックスは Excelファイル名から割り出した日付
     df_transaction.index = [get_dt_from_excel(f) for f in dict_transaction["file"]]
+
+    df_technical = pd.DataFrame(dict_technical)
+    df_technical.index = [datetime.datetime.fromtimestamp(ts) for ts in df_technical["ts"]]
+    df_technical.to_pickle("technical.pkl")
+    print(df_technical)
 
     # ====== プロット ======
     # 念の為、銘柄コードが一つしか存在しないことを確認

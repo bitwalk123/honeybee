@@ -38,9 +38,9 @@ if __name__ == "__main__":
     for i, file_excel in enumerate(list_excel):
         # 概ねのエピソード数
         if i > 0:
-            n_episode = 50
+            n_episode = 25
         else:
-            n_episode = 100
+            n_episode = 50
         agent.train(file_excel, n_episode)
 
     # 推論（確認用）

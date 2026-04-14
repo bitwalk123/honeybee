@@ -1,5 +1,6 @@
 import os.path
 import shutil
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -149,7 +150,7 @@ class MyPPOAgent:
 
         env_train.close()
 
-    def infer(self, file_excel: str):
+    def infer(self, file_excel: str) -> dict[Any, Any]:
         # 指定銘柄コードのティックデータのデータフレームを取得
         self.df = get_excel_sheet(file_excel, self.code)
 
@@ -158,9 +159,16 @@ class MyPPOAgent:
         env_dummy = DummyVecEnv([self.make_env])
 
         # 3. VecNormalize Wrapper
-        env_infer = VecNormalize.load(self.path_normalize, env_dummy)  # 学習情報を読み込む
-        env_infer.training = False
-        env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
+        if os.path.exists(self.path_normalize):
+            env_infer = VecNormalize.load(
+                self.path_normalize,
+                env_dummy
+            )  # 学習情報を読み込む
+            env_infer.training = False
+            env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
+        else:
+            print(f"{self.path_normalize} does not exist!")
+            return {}
 
         if os.path.exists(self.path_model):
             model = MaskablePPO.load(
@@ -171,7 +179,7 @@ class MyPPOAgent:
             print(f"model is loaded from {self.path_model}.")
         else:
             print(f"{self.path_model} does not exist!")
-            return
+            return {}
 
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
@@ -185,6 +193,7 @@ class MyPPOAgent:
 
         # ====== 推論実施 ======
         print("Begin inference...")
+        dict_result = dict()
         info = []
         while not episode_over:
             # VecEnv では action_masks を env_method で取得する
@@ -207,12 +216,8 @@ class MyPPOAgent:
             dict_info = info[idx]
             # 取引結果を出力
             if "transaction" in dict_info:
-                df = dict_info["transaction"]
-                print(df)
-                print(
-                    f"モデル報酬 : {total_reward},\n"
-                    f"損益 : {df['損益'].sum()} 円, 約定係数 : {len(df)} 回"
-                )
+                dict_result["transaction"] = dict_info["transaction"]
 
         # 環境の終了処理
         env_infer.close()
+        return dict_result

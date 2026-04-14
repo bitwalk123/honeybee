@@ -187,7 +187,7 @@ class MyPPOAgent:
         # 環境のリセット
         obs = env_infer.reset()
         # assert env_inf.observation_space.contains(obs), "observation_space mismatch"
-        print(f"Initial observation:\n{obs}")
+        # print(f"Initial observation:\n{obs}")
         episode_over = False
         total_reward = 0
 

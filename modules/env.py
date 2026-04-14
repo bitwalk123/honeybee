@@ -76,7 +76,7 @@ class TrainingEnv(gym.Env):
         # 寄り付き時のタイムスタンプと始値の取得
         self.ts0, self.price0, _, _ = self.get_data(0)
 
-        print(df_tick.tail())
+        # print(df_tick.tail())
 
         # ====== Define observation_space（観測値空間） ======
         """

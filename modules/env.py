@@ -37,7 +37,7 @@ class TrainingEnv(gym.Env):
         self.PERIOD_WARMUP: int = 300
         self.PERIOD_MA_1: int = 30
         self.N_MINUS_MAX: int = 300
-        self.RATIO_PROFIT_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 
@@ -47,7 +47,8 @@ class TrainingEnv(gym.Env):
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
         self.position: PositionType = PositionType.NONE  # ポジション
-        self.profit: float = 0.0  # 含み損益
+        #self.profit: float = 0.0  # 含み損益
+        self.profit_pre: float = 0.0  # 一つ前の含み損益
         self.n_trade: int = 0  # 約定回数
         self.count_negative: int = 0  # 含み損の継続カウンタ
         # 報酬系
@@ -168,7 +169,8 @@ class TrainingEnv(gym.Env):
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
         self.position: PositionType = PositionType.NONE  # ポジション
-        self.profit: float = 0.0  # 含み損益
+        #self.profit: float = 0.0  # 含み損益
+        self.profit_pre: float = 0.0  # 一つ前の含み損益
         self.n_trade: int = 0  # 約定回数
         self.count_negative: int = 0  # 含み損の継続カウンタ
         # 報酬系
@@ -236,6 +238,7 @@ class TrainingEnv(gym.Env):
                 self.posman.openPosition(self.CODE, ts, price, action_type)
                 self.position = PositionType.LONG  # ポジションを更新
                 self.n_trade += 1  # 取引回数の更新
+                self.profit_pre = 0.0 # 一つ前の含み益
                 # 【報酬】
                 reward -= self.COST_CONTRACT  # 約定コスト
                 # 買建用 VWAP 判定
@@ -251,6 +254,7 @@ class TrainingEnv(gym.Env):
                 self.posman.openPosition(self.CODE, ts, price, action_type)
                 self.position = PositionType.SHORT  # ポジションを更新
                 self.n_trade += 1  # 取引回数の更新
+                self.profit_pre = 0.0 # 一つ前の含み益
                 # 【報酬】
                 reward -= self.COST_CONTRACT  # 約定コスト
                 # 売建用 VWAP 判定
@@ -263,7 +267,10 @@ class TrainingEnv(gym.Env):
         elif action_type == ActionType.HOLD:
             if self.position != PositionType.NONE:
                 # 含み益があれば幾分かを報酬に
-                reward += profit * self.RATIO_PROFIT_HOLD
+                #reward += profit * self.RATIO_PROFIT_HOLD
+                # 含み益の増減に応じて幾分かを報酬に
+                reward += (profit - self.profit_pre) * self.RATIO_PROFIT_HOLD
+                self.profit_pre = profit # 一つ前の含み益の更新
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
@@ -334,6 +341,7 @@ class TrainingEnv(gym.Env):
         self.posman.closePosition(self.CODE, ts, price)
         self.position = PositionType.NONE  # ポジションを更新
         self.n_trade += 1  # 取引回数の更新
+        self.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
         r = 0
         r -= self.COST_CONTRACT  # 約定コスト
@@ -357,6 +365,7 @@ class TrainingEnv(gym.Env):
         self.posman.closePosition(self.CODE, ts, price, "強制返済")
         self.position = PositionType.NONE  # ポジションを更新
         self.n_trade += 1  # 取引回数の更新
+        self.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
         r = 0
         r -= self.COST_CONTRACT  # 約定コスト

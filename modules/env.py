@@ -229,6 +229,8 @@ class TrainingEnv(gym.Env):
         profit = self.posman.getProfit(self.CODE, price)
         # 初期報酬
         reward = 0
+        # 情報用辞書
+        info = {}
 
         # ====== 建玉管理 ======
         action_type = ActionType(action)
@@ -282,14 +284,23 @@ class TrainingEnv(gym.Env):
         penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
         reward += penalty_negative
 
-        # ======  モデル報酬の保持（分析用） ======
+        # ====== モデル報酬の保持（分析用） ======
         self.dict_reward["ts"].append(ts)
         self.dict_reward["reward"].append(reward)
+
+        # ====== テクニカル分析用の情報 ======
+        dict_technical = {
+            "ts": ts,
+            "price": price,
+            "ma1": ma1,
+            "diff_vwap": diff_vwap,
+            "profit": profit,
+        }
+        info["technical"] = dict_technical
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
-        info = {}
         if len(self.df_tick) - 1 <= self.row:
             # ティックデータの末尾
             if self.posman.hasPosition(self.CODE):

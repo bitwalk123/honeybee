@@ -43,12 +43,12 @@ if __name__ == "__main__":
         ax[i].grid()
 
     ax[0].set_title(f"推論パフォーマンス ({code}) : 総収益 {total} 円/株 in {days} 日")
-    ax[0].plot(df["pnl"])
+    ax[0].plot(df["pnl"], color="C0")
     ax[0].set_ylabel("損益/株")
     ax[0].xaxis.set_major_formatter(mdates.DateFormatter("%m/%d"))
     ax[0].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
 
-    ax[1].plot(df["contracts"])
+    ax[1].plot(df["contracts"], color="C1")
     ax[1].set_ylabel("約定回数")
 
     plt.tight_layout()

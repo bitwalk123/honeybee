@@ -22,7 +22,7 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
-    list_excel = list_excel_all[-6:]
+    list_excel = list_excel_all[-20:]
 
     # 学習に渡す Excel リストが確かにリストになっているか確認
     if type(list_excel) is not list:
@@ -38,9 +38,9 @@ if __name__ == "__main__":
     for i, file_excel in enumerate(list_excel):
         # 概ねのエピソード数
         if i > 0:
-            n_episode = 20
+            n_episode = 25
         else:
-            n_episode = 100
+            n_episode = 50
         agent.train(file_excel, n_episode)
 
     # 推論（確認用）

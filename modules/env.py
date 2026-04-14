@@ -267,7 +267,7 @@ class TrainingEnv(gym.Env):
         elif action_type == ActionType.HOLD:
             if self.position != PositionType.NONE:
                 # 含み益があれば幾分かを報酬に
-                # reward += profit * self.RATIO_PROFIT_HOLD
+                reward += profit * self.RATIO_PROFIT_HOLD
                 # 含み益の増減に応じて幾分かを報酬に
                 reward += (profit - self.profit_pre) * self.RATIO_PROFIT_HOLD
                 self.profit_pre = profit  # 一つ前の含み益の更新

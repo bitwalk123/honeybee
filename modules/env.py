@@ -188,7 +188,7 @@ class TrainingEnv(gym.Env):
         """
 
         # Gymnasiumの仕様に従ってseedを設定し、乱数生成器を取得
-        super().reset(seed=seed)
+        super().reset(seed=int(np.random.rand() * 1000))
 
         # 環境の初期化（常に寄り付きから開始）
         self.init_status()

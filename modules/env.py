@@ -37,8 +37,8 @@ class TrainingEnv(gym.Env):
         self.PERIOD_WARMUP: int = 300
         self.PERIOD_MA_1: int = 30
         self.N_MINUS_MAX: int = 300
-        self.RATIO_PROFIT_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益からの報酬比率
-        self.RATIO_PROFIT_CHANGE_HOLD: float = 0.0025  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
+        self.RATIO_PROFIT_HOLD: float = 0.0075  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 

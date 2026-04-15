@@ -69,6 +69,7 @@ if __name__ == "__main__":
     df_transaction = pd.DataFrame(dict_transaction)
     # インデックスは Excelファイル名から割り出した日付
     df_transaction.index = [get_dt_from_excel(f) for f in dict_transaction["file"]]
+    df_transaction.to_pickle("transaction.pkl")
 
     df_technical = pd.DataFrame(dict_technical)
     df_technical.index = [datetime.datetime.fromtimestamp(ts) for ts in df_technical["ts"]]

@@ -13,6 +13,10 @@ if __name__ == "__main__":
     dt = df.index[0]
     print(dt.date())
 
+    df_transaction = pd.read_pickle("transaction.pkl")
+    r = df_transaction.index[-1]
+    pnl = df_transaction.tail(1).loc[r, "pnl"]
+
     # Matplotlib の共通設定
     FONT_PATH = "fonts/RictyDiminished-Regular.ttf"
     fm.fontManager.addfont(FONT_PATH)
@@ -35,7 +39,7 @@ if __name__ == "__main__":
         ax[i] = axis
         ax[i].grid()
 
-    ax[0].set_title(f"{dt.date()} : {code} の推論パフォーマンス")
+    ax[0].set_title(f"{dt.date()} : {code} の推論パフォーマンス, 損益 {pnl} 円/株")
     ax[0].plot(df["price"], linewidth=1, label="株価")
     ax[0].plot(df["ma1"], linewidth=1, label="MA1")
     ax[0].plot(df["ma2"], linewidth=1, label="MA2")

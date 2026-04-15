@@ -18,7 +18,7 @@ def learning_curve(df: pd.DataFrame, subtitle: str):
     ax.grid()
     plt.tight_layout()
     plt.savefig("trend_reward.png")
-    #plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -59,3 +59,42 @@ def plot_performance(code: str, df: pd.DataFrame):
     output = "performance.png"
     plt.savefig(output)
     plt.show()
+
+
+def plot_main(ax, df, title):
+    ax.set_title(title)
+    ax.plot(df["price"], color="black", alpha=0.25, linewidth=0.5, zorder=20, label="株価")
+    ax.plot(df["ma1"], linewidth=0.75, zorder=30, label="MA1")
+    ax.plot(df["ma2"], linewidth=0.75, zorder=30, label="MA2")
+    ax.plot(df["vwap"], linewidth=0.75, zorder=30, label="VWAP")
+    ax.set_ylabel("株価")
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
+    ax.legend(fontsize=6)
+
+
+def plot_diff_ma(ax, df):
+    x = df.index
+    y1 = df["diff_ma"]
+    ax.fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
+    ax.fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
+    ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylabel("MA乖離率")
+
+
+def plot_diff_vwap(ax, df):
+    x = df.index
+    y1 = df["diff_vwap"]
+    ax.fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
+    ax.fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
+    ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylabel("VWAP乖離率")
+
+
+def plot_profit(ax, df):
+    x = df.index
+    y1 = df["profit"]
+    ax.fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
+    ax.fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
+    ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylabel("含み損益")

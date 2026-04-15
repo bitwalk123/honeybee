@@ -1,3 +1,5 @@
+import datetime
+
 import pandas as pd
 from matplotlib import (
     dates as mdates,
@@ -6,12 +8,23 @@ from matplotlib import (
     ticker as ticker,
 )
 
+from funcs.plot import (
+    plot_diff_ma,
+    plot_diff_vwap,
+    plot_main,
+    plot_profit,
+)
+
 if __name__ == "__main__":
     code = "9984"
     df = pd.read_pickle("technical.pkl")
     print(df.columns)
     dt = df.index[0]
-    print(dt.date())
+    dt_date = dt.date()
+    t_left = datetime.time(8, 50)
+    t_right = datetime.time(15, 40)
+    dt_left = datetime.datetime.combine(dt_date, t_left)
+    dt_right = datetime.datetime.combine(dt_date, t_right)
 
     df_transaction = pd.read_pickle("transaction.pkl")
     r = df_transaction.index[-1]
@@ -41,36 +54,21 @@ if __name__ == "__main__":
 
     # 株価
     i = 0
-    ax[i].set_title(f"{dt.date()} : {code} の推論パフォーマンス, 損益 {pnl} 円/株")
-    ax[i].plot(df["price"], color="black", alpha=0.25, linewidth=0.5, zorder=10, label="株価")
-    ax[i].plot(df["ma1"], linewidth=1, zorder=20, label="MA1")
-    ax[i].plot(df["ma2"], linewidth=1, zorder=30, label="MA2")
-    ax[i].plot(df["vwap"], linewidth=0.75, zorder=40, label="VWAP")
-    ax[i].set_ylabel("株価")
-    ax[i].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    ax[i].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
-    ax[i].legend(fontsize=6)
+    title = f"{dt_date} : {code} の推論パフォーマンス, 損益 {pnl} 円/株"
+    ax[i].set_xlim(dt_left, dt_right)
+    plot_main(ax[i], df, title)
 
     # MA乖離率
     i += 1
-    ax[i].plot(df["diff_ma"], color="black", alpha=0.5, linewidth=0.75)
-    ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)
-    ax[i].set_ylabel("MA乖離率")
+    plot_diff_ma(ax[i], df)
 
     # VWAP乖離率
     i += 1
-    ax[i].plot(df["diff_vwap"], color="black", alpha=0.5, linewidth=0.75)
-    ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)
-    ax[i].set_ylabel("VWAP乖離率")
+    plot_diff_vwap(ax[i], df)
 
     # 含み損益
     i += 1
-    x = df.index
-    y1 = df["profit"]
-    ax[i].plot(df["profit"], linewidth=0.5, color="black", alpha=0.1, zorder=10)
-    ax[i].fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
-    ax[i].fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
-    ax[i].set_ylabel("含み損益")
+    plot_profit(ax[i], df)
 
     plt.tight_layout()
     output = "technical.png"

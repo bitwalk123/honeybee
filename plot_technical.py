@@ -51,11 +51,13 @@ if __name__ == "__main__":
     ax[i].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
     ax[i].legend(fontsize=6)
 
+    # MA乖離率
     i += 1
     ax[i].plot(df["diff_ma"], color="black", alpha=0.5, linewidth=0.75)
     ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)
     ax[i].set_ylabel("MA乖離率")
 
+    # VWAP乖離率
     i += 1
     ax[i].plot(df["diff_vwap"], color="black", alpha=0.5, linewidth=0.75)
     ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)

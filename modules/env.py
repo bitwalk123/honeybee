@@ -36,8 +36,9 @@ class TrainingEnv(gym.Env):
         # ====== 報酬パラメータ ======
         self.PERIOD_WARMUP: int = 300
         self.PERIOD_MA_1: int = 30
+        self.PERIOD_MA_2: int = 300
         self.N_MINUS_MAX: int = 300
-        self.RATIO_PROFIT_HOLD: float = 0.0075  # HOLD（建玉あり）時の含み損益からの報酬比率
+        self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
         self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
@@ -45,10 +46,28 @@ class TrainingEnv(gym.Env):
         # 定数
         self.MAX_TRADE: int = 200  # 約定数上限
 
+        # ====== 必要な観測値を追加 ======
+        # 短周期移動平均 MA1
+        ma1 = MovingAverage(window_size=self.PERIOD_MA_1)
+        df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
+        ma2 = MovingAverage(window_size=self.PERIOD_MA_2)
+        df_tick["MA2"] = [ma2.update(p) for p in df_tick["Price"]]
+        df_tick["DiffMA"] = (df_tick["MA1"] - df_tick["MA2"]) / df_tick["MA2"]
+        # 出来高加重平均価格
+        vwap = VWAP()
+        df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
+        # 乖離度 (MA1 - VWAP) / VWAP
+        df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
+
+        # ====== 寄り付き時のタイムスタンプと始値の取得 ======
+        self.ts0, self.price0, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(0)
+
         # インスタンス変数の初期化
         self.row: int = 0  # ティックデータの行位置
         self.position: PositionType = PositionType.NONE  # ポジション
         # self.profit: float = 0.0  # 含み損益
+        self.diff_ma_pre = diff_ma
+        self.diff_vwap_pre = diff_vwap
         self.profit_pre: float = 0.0  # 一つ前の含み損益
         self.n_trade: int = 0  # 約定回数
         self.count_negative: int = 0  # 含み損の継続カウンタ
@@ -64,19 +83,6 @@ class TrainingEnv(gym.Env):
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
-        # ====== 必要な観測値を追加 ======
-        # 短周期移動平均 MA1
-        ma1 = MovingAverage(window_size=self.PERIOD_MA_1)
-        df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
-        # 出来高加重平均価格
-        vwap = VWAP()
-        df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
-        # 乖離度 (MA1 - VWAP) / VWAP
-        df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
-
-        # 寄り付き時のタイムスタンプと始値の取得
-        self.ts0, self.price0, _, _ = self.get_data(0)
-
         # print(df_tick.tail())
 
         # ====== Define observation_space（観測値空間） ======
@@ -85,6 +91,9 @@ class TrainingEnv(gym.Env):
         [market]
         1. Price（株価）
         2. MA1（短周期移動平均）
+        #. MA2（長周期移動平均）
+        #. DiffMA（乖離率 - (MA1 - MA2) / MA2）
+        #. VWAP（VWAP）
         3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         4. Profit（含み損益）
         [counter]
@@ -141,7 +150,7 @@ class TrainingEnv(gym.Env):
         :param row:
         :return:
         """
-        list_name = ["Time", "Price", "MA1", "DiffVWAP"]
+        list_name = ["Time", "Price", "MA1", "MA2", "DiffMA", "VWAP", "DiffVWAP"]
         return tuple(self.df_tick.iloc[row][list_name])
 
     def get_obs(self):
@@ -196,8 +205,8 @@ class TrainingEnv(gym.Env):
         # 環境の初期化（常に寄り付きから開始）
         self.init_status()
 
-        # データフレームの最初の行のデータを取得
-        _, price, ma1, diff_vwap = self.get_data(0)
+        # ====== データフレームの最初の行のデータを取得 ======
+        ts, price, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(0)
         # 含み損益
         profit = 0
 
@@ -224,8 +233,8 @@ class TrainingEnv(gym.Env):
         :param action:
         :return:
         """
-        # データフレームからデータを一行分取得
-        ts, price, ma1, diff_vwap = self.get_data(self.row)
+        # ====== データフレームからデータを一行分取得 ======
+        ts, price, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(self.row)
         # 含み損益の取得
         profit = self.posman.getProfit(self.CODE, price)
         # 初期報酬
@@ -294,10 +303,17 @@ class TrainingEnv(gym.Env):
             "ts": ts,
             "price": price,
             "ma1": ma1,
+            "ma2": ma2,
+            "diff_ma": diff_ma,
+            "vwap": vwap,
             "diff_vwap": diff_vwap,
             "profit": profit,
         }
         info["technical"] = dict_technical
+
+        # 一つ前の値を更新
+        self.diff_ma_pre = diff_ma
+        self.diff_vwap_pre = diff_vwap
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
@@ -322,8 +338,8 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                price - self.price0,
-                ma1 - self.price0,
+                price - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
+                ma1 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
                 diff_vwap,
                 profit,
             ],

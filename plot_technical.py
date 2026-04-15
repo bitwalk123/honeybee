@@ -7,6 +7,7 @@ from matplotlib import (
 )
 
 if __name__ == "__main__":
+    code = "9984"
     df = pd.read_pickle("technical.pkl")
     print(df.columns)
     dt = df.index[0]
@@ -22,17 +23,19 @@ if __name__ == "__main__":
 
     plt.rcParams["font.family"] = font_prop.get_name()
 
-    fig = plt.figure(figsize=(6.8, 4))
+    fig = plt.figure(figsize=(6.8, 6))
     ax = dict()
     n = 3
     gs = fig.add_gridspec(
-        n, 1, wspace=0.0, hspace=0.0,
+        n, 1,
+        wspace=0.0, hspace=0.0,
         height_ratios=[2 if i == 0 else 1 for i in range(n)]
     )
     for i, axis in enumerate(gs.subplots(sharex="col")):
         ax[i] = axis
         ax[i].grid()
 
+    ax[0].set_title(f"{dt.date()} : {code} の推論パフォーマンス")
     ax[0].plot(df["price"],linewidth=1, label="株価")
     ax[0].plot(df["ma1"],linewidth=1, label="MA1")
     ax[0].set_ylabel("株価")
@@ -41,8 +44,10 @@ if __name__ == "__main__":
     ax[0].legend(fontsize=6)
 
     ax[1].plot(df["diff_vwap"],linewidth=1)
+    ax[1].set_ylabel("VWAP乖離度")
 
     ax[2].plot(df["profit"],linewidth=1)
+    ax[2].set_ylabel("含み損益")
 
     plt.tight_layout()
     output = "technical.png"

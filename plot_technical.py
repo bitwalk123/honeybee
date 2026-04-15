@@ -1,11 +1,7 @@
-import datetime
-
 import pandas as pd
 from matplotlib import (
-    dates as mdates,
     font_manager as fm,
     pyplot as plt,
-    ticker as ticker,
 )
 
 from funcs.plot import (
@@ -14,17 +10,14 @@ from funcs.plot import (
     plot_main,
     plot_profit,
 )
+from funcs.tide import get_tse_x_range
 
 if __name__ == "__main__":
     code = "9984"
     df = pd.read_pickle("technical.pkl")
-    print(df.columns)
-    dt = df.index[0]
-    dt_date = dt.date()
-    t_left = datetime.time(8, 50)
-    t_right = datetime.time(15, 40)
-    dt_left = datetime.datetime.combine(dt_date, t_left)
-    dt_right = datetime.datetime.combine(dt_date, t_right)
+
+    # プロットの x軸の範囲を算出（左右10分のマージン）
+    dt_date, dt_left, dt_right = get_tse_x_range(df)
 
     df_transaction = pd.read_pickle("transaction.pkl")
     r = df_transaction.index[-1]

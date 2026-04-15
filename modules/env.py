@@ -386,7 +386,12 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         position = position_to_onehot(self.position).astype(np.float32)
-        self.obs = obs = {"market": market, "cross": cross, "counter": counter, "position": position}
+        self.obs = obs = {
+            "market": market,
+            "cross": cross,
+            "counter": counter,
+            "position": position,
+        }
 
         return obs, reward, terminated, truncated, info
 

@@ -39,24 +39,36 @@ if __name__ == "__main__":
         ax[i] = axis
         ax[i].grid()
 
-    ax[0].set_title(f"{dt.date()} : {code} の推論パフォーマンス, 損益 {pnl} 円/株")
-    ax[0].plot(df["price"], linewidth=1, label="株価")
-    ax[0].plot(df["ma1"], linewidth=1, label="MA1")
-    ax[0].plot(df["ma2"], linewidth=1, label="MA2")
-    ax[0].plot(df["vwap"], linewidth=1, label="VWAP")
-    ax[0].set_ylabel("株価")
-    ax[0].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
-    ax[0].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
-    ax[0].legend(fontsize=6)
+    # 株価
+    i = 0
+    ax[i].set_title(f"{dt.date()} : {code} の推論パフォーマンス, 損益 {pnl} 円/株")
+    ax[i].plot(df["price"], color="black", alpha=0.25, linewidth=0.5, zorder=10, label="株価")
+    ax[i].plot(df["ma1"], linewidth=1, zorder=20, label="MA1")
+    ax[i].plot(df["ma2"], linewidth=1, zorder=30, label="MA2")
+    ax[i].plot(df["vwap"], linewidth=0.75, zorder=40, label="VWAP")
+    ax[i].set_ylabel("株価")
+    ax[i].xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
+    ax[i].yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:,.0f}"))
+    ax[i].legend(fontsize=6)
 
-    ax[1].plot(df["diff_ma"], linewidth=1)
-    ax[1].set_ylabel("MA乖離率")
+    i += 1
+    ax[i].plot(df["diff_ma"], color="black", alpha=0.5, linewidth=0.75)
+    ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)
+    ax[i].set_ylabel("MA乖離率")
 
-    ax[2].plot(df["diff_vwap"], linewidth=1)
-    ax[2].set_ylabel("VWAP乖離率")
+    i += 1
+    ax[i].plot(df["diff_vwap"], color="black", alpha=0.5, linewidth=0.75)
+    ax[i].axhline(y=0, color="black", linewidth=0.75, alpha=1, zorder=0)
+    ax[i].set_ylabel("VWAP乖離率")
 
-    ax[3].plot(df["profit"], linewidth=1)
-    ax[3].set_ylabel("含み損益")
+    # 含み損益
+    i += 1
+    x = df.index
+    y1 = df["profit"]
+    ax[i].plot(df["profit"], linewidth=0.5, color="black", alpha=0.1, zorder=10)
+    ax[i].fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
+    ax[i].fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
+    ax[i].set_ylabel("含み損益")
 
     plt.tight_layout()
     output = "technical.png"

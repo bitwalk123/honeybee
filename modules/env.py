@@ -38,6 +38,7 @@ class TrainingEnv(gym.Env):
         self.PERIOD_MA_1: int = 30
         self.PERIOD_MA_2: int = 300
         self.N_MINUS_MAX: int = 300
+        self.REWARD_CROSS_CROSS: float = 1.5 # クロス・シグナル時のエントリで報酬
         self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
@@ -91,11 +92,11 @@ class TrainingEnv(gym.Env):
         [market]
         1. Price（株価）
         2. MA1（短周期移動平均）
-        #. MA2（長周期移動平均）
-        #. DiffMA（乖離率 - (MA1 - MA2) / MA2）
-        #. VWAP（VWAP）
-        3. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
-        4. Profit（含み損益）
+        3. MA2（長周期移動平均）
+        4. DiffMA（乖離率 - (MA1 - MA2) / MA2）
+        5. VWAP（VWAP）
+        6. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
+        7. Profit（含み損益）
         [counter]
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
@@ -105,7 +106,7 @@ class TrainingEnv(gym.Env):
         3. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(4,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(7,), dtype=np.float32),
             "counter": spaces.Box(low=0, high=np.inf, shape=(2,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
@@ -217,6 +218,9 @@ class TrainingEnv(gym.Env):
                 0.0,
                 0.0,
                 0.0,
+                0.0,
+                0.0,
+                0.0,
             ],
             dtype=np.float32
         )
@@ -254,12 +258,21 @@ class TrainingEnv(gym.Env):
                 # 【報酬】
                 reward -= self.COST_CONTRACT  # 約定コスト
                 # 買建用 VWAP 判定
-                reward -= diff_vwap  # diff_vwap が負の時に買建すれば報酬
+                # reward -= diff_vwap  # diff_vwap が負の時に買建すれば報酬
+
+                # ゴールデン・クロス時のエントリ報酬
+                if self.diff_ma_pre < 0 < diff_ma:
+                    reward += self.REWARD_CROSS_CROSS
+                if self.diff_vwap_pre < 0 < diff_vwap:
+                    reward += self.REWARD_CROSS_CROSS
+
             elif self.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 reward += self.position_close(ts, price, profit)
+
             else:
                 raise RuntimeError("Trade rule violation!")
+
         elif action_type == ActionType.SELL:
             if self.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
@@ -270,12 +283,21 @@ class TrainingEnv(gym.Env):
                 # 【報酬】
                 reward -= self.COST_CONTRACT  # 約定コスト
                 # 売建用 VWAP 判定
-                reward += diff_vwap  # diff_vwap が正の時に売建すれば報酬
+                # reward += diff_vwap  # diff_vwap が正の時に売建すれば報酬
+
+                # デッド・クロス時のエントリ報酬
+                if diff_ma < 0 < self.diff_ma_pre:
+                    reward += self.REWARD_CROSS_CROSS
+                if diff_vwap < 0 < self.diff_vwap_pre:
+                    reward += self.REWARD_CROSS_CROSS
+
             elif self.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 reward += self.position_close(ts, price, profit)
+
             else:
                 raise RuntimeError("Trade rule violation!")
+
         elif action_type == ActionType.HOLD:
             if self.position != PositionType.NONE:
                 # 含み益があれば幾分かを報酬に
@@ -340,6 +362,9 @@ class TrainingEnv(gym.Env):
             [
                 price - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
                 ma1 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
+                ma2 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
+                diff_ma,
+                vwap - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
                 diff_vwap,
                 profit,
             ],

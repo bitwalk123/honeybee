@@ -169,7 +169,7 @@ class MyPPOAgent:
             env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
         else:
             print(f"{self.path_normalize} does not exist!")
-            return {}
+            return {}, {}
 
         if os.path.exists(self.path_model):
             model = MaskablePPO.load(
@@ -180,7 +180,7 @@ class MyPPOAgent:
             print(f"model is loaded from {self.path_model}.")
         else:
             print(f"{self.path_model} does not exist!")
-            return {}
+            return {},{}
 
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0

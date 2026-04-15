@@ -11,14 +11,15 @@ from funcs.tide import get_dt_from_excel
 from modules.agent import MyPPOAgent
 
 
-def get_transaction(d: dict) -> None:
+def get_transaction(f:str, d: dict) -> None:
     df = dict_result["transaction"]
-    # print(df)
+    print(df)
+    filename = os.path.basename(f)
     pnl = df["損益"].sum()
     n_contract = len(df)
-    print(f"損益 : {pnl} 円, 約定係数 : {n_contract} 回")
+    print(f"{filename}, 損益 : {pnl} 円, 約定係数 : {n_contract} 回")
 
-    d["file"].append(os.path.basename(file_excel))
+    d["file"].append(filename)
     d["code"].append(code)
     d["pnl"].append(pnl)
     d["contracts"].append(n_contract)
@@ -63,7 +64,7 @@ if __name__ == "__main__":
     for file_excel in list_excel:
         dict_result, dict_technical = agent.infer(file_excel)
         if "transaction" in dict_result:
-            get_transaction(dict_transaction)
+            get_transaction(file_excel, dict_transaction)
 
     # 辞書 → データフレーム
     df_transaction = pd.DataFrame(dict_transaction)

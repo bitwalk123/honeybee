@@ -38,7 +38,7 @@ class TrainingEnv(gym.Env):
         self.PERIOD_MA_1: int = 30
         self.PERIOD_MA_2: int = 300
         self.N_MINUS_MAX: int = 300
-        self.REWARD_CROSS_CROSS: float = 1.5 # クロス・シグナル時のエントリで報酬
+        self.REWARD_CROSS_CROSS: float = 1.5  # クロス・シグナル時のエントリで報酬
         self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
         self.RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
         self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
@@ -93,10 +93,11 @@ class TrainingEnv(gym.Env):
         1. Price（株価）
         2. MA1（短周期移動平均）
         3. MA2（長周期移動平均）
-        4. DiffMA（乖離率 - (MA1 - MA2) / MA2）
-        5. VWAP（VWAP）
-        6. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
-        7. Profit（含み損益）
+        4. VWAP（VWAP）
+        5. Profit（含み損益）
+        [cross]
+        1. DiffMA（乖離率 - (MA1 - MA2) / MA2）
+        2. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
         [counter]
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
@@ -106,7 +107,8 @@ class TrainingEnv(gym.Env):
         3. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(7,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32),
+            "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
             "counter": spaces.Box(low=0, high=np.inf, shape=(2,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
@@ -219,14 +221,13 @@ class TrainingEnv(gym.Env):
                 0.0,
                 0.0,
                 0.0,
-                0.0,
-                0.0,
             ],
             dtype=np.float32
         )
+        cross = np.array([0, 0], dtype=np.float32)
         counter = np.array([0, 0], dtype=np.float32)
         position = position_to_onehot(self.position).astype(np.float32)
-        obs = {"market": market, "counter": counter, "position": position}
+        obs = {"market": market, "cross": cross, "counter": counter, "position": position}
 
         info = {}  # Additional debug info
         return obs, info
@@ -326,10 +327,12 @@ class TrainingEnv(gym.Env):
             "price": price,
             "ma1": ma1,
             "ma2": ma2,
-            "diff_ma": diff_ma,
             "vwap": vwap,
-            "diff_vwap": diff_vwap,
             "profit": profit,
+            "diff_ma": diff_ma,
+            "diff_vwap": diff_vwap,
+            "n_trade": self.n_trade,
+            "count_negative": self.count_negative,
         }
         info["technical"] = dict_technical
 
@@ -363,10 +366,15 @@ class TrainingEnv(gym.Env):
                 price - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
                 ma1 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
                 ma2 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
-                diff_ma,
                 vwap - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
-                diff_vwap,
                 profit,
+            ],
+            dtype=np.float32
+        )
+        cross = np.array(
+            [
+                diff_ma,
+                diff_vwap,
             ],
             dtype=np.float32
         )
@@ -378,7 +386,7 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         position = position_to_onehot(self.position).astype(np.float32)
-        self.obs = obs = {"market": market, "counter": counter, "position": position}
+        self.obs = obs = {"market": market, "cross": cross, "counter": counter, "position": position}
 
         return obs, reward, terminated, truncated, info
 

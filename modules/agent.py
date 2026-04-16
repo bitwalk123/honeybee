@@ -1,7 +1,6 @@
 import os.path
 import shutil
 from collections import defaultdict
-from typing import Any
 
 import numpy as np
 import pandas as pd

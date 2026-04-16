@@ -19,9 +19,17 @@ if __name__ == "__main__":
     # プロットの x軸の範囲を算出（左右10分のマージン）
     dt_date, dt_left, dt_right = get_tse_x_range(df)
 
-    df_transaction = pd.read_pickle("transaction.pkl")
-    r = df_transaction.index[-1]
-    pnl = df_transaction.tail(1).loc[r, "pnl"]
+    # 最後の取引明細の読み込み
+    df_transaction_last = pd.read_pickle("transaction_last.pkl")
+    df_transaction_last.index = [pd.to_datetime(t) for t in df_transaction_last["注文日時"]]
+    df_transaction_last.index.name = "注文日時"
+    df_transaction_last = df_transaction_last[
+        ['注文番号', '銘柄コード', '売買', '約定単価', '約定数量', '損益', '備考']
+    ]
+    print(df_transaction_last)
+    pnl = df_transaction_last["損益"].sum()
+    print("---")
+    print(f"実現損益 : {pnl} 円/株")
 
     # Matplotlib の共通設定
     FONT_PATH = "fonts/RictyDiminished-Regular.ttf"
@@ -44,6 +52,8 @@ if __name__ == "__main__":
     for i, axis in enumerate(gs.subplots(sharex="col")):
         ax[i] = axis
         ax[i].grid()
+        for t in df_transaction_last.index:
+            ax[i].axvline(x=t, color="red", linewidth=0.25, zorder=100)
 
     # 株価
     i = 0

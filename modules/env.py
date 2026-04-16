@@ -2,9 +2,6 @@
 Reference:
 https://gymnasium.farama.org/introduction/create_custom_env/
 """
-import glob
-import os
-import pickle
 from collections import defaultdict
 
 import gymnasium as gym
@@ -12,15 +9,10 @@ import pandas as pd
 from gymnasium import spaces
 import numpy as np
 
+from funcs.conv import position_to_onehot
 from modules.posman import PositionManager
 from modules.technical import MovingAverage, VWAP
 from structs.app_enum import ActionType, PositionType
-
-
-def position_to_onehot(pos: PositionType) -> np.ndarray:
-    onehot = np.zeros(3, dtype=np.float32)
-    onehot[int(pos)] = 1.0
-    return onehot
 
 
 class TrainingEnv(gym.Env):

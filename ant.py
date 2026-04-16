@@ -11,8 +11,8 @@ from funcs.tide import get_dt_from_excel
 from modules.agent import MyPPOAgent
 
 
-def get_transaction(f:str, d: dict) -> None:
-    df = dict_result["transaction"]
+def get_transaction(f: str, r: dict, d: dict) -> None:
+    df = r["transaction"]
     print(df)
     filename = os.path.basename(f)
     pnl = df["損益"].sum()
@@ -60,17 +60,22 @@ if __name__ == "__main__":
     dict_transaction = defaultdict(list)
     # テクニカルデータを格納する辞書
     dict_technical = {}
+    dict_result = {}
     # Excelファイル毎のループ
     for file_excel in list_excel:
         dict_result, dict_technical = agent.infer(file_excel)
         if "transaction" in dict_result:
-            get_transaction(file_excel, dict_transaction)
+            get_transaction(file_excel, dict_result, dict_transaction)
+
+    # 最後の取引明細を保存
+    df_trans_last = dict_result["transaction"]
+    df_trans_last.to_pickle("transaction_last.pkl")
 
     # 辞書 → データフレーム
     df_transaction = pd.DataFrame(dict_transaction)
     # インデックスは Excelファイル名から割り出した日付
     df_transaction.index = [get_dt_from_excel(f) for f in dict_transaction["file"]]
-    df_transaction.to_pickle("transaction.pkl")
+    df_transaction.to_pickle("transaction_summary.pkl")
 
     df_technical = pd.DataFrame(dict_technical)
     df_technical.index = [datetime.datetime.fromtimestamp(ts) for ts in df_technical["ts"]]

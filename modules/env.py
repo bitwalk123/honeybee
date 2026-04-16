@@ -1,15 +1,10 @@
-"""
-Reference:
-https://gymnasium.farama.org/introduction/create_custom_env/
-"""
-from collections import defaultdict
-
 import gymnasium as gym
+import numpy as np
 import pandas as pd
 from gymnasium import spaces
-import numpy as np
 
 from funcs.conv import position_to_onehot
+from modules.env_data import EnvData
 from modules.posman import PositionManager
 from modules.technical import MovingAverage, VWAP
 from structs.app_enum import ActionType, PositionType
@@ -25,75 +20,36 @@ class TrainingEnv(gym.Env):
         self.df_tick: pd.DataFrame = df_tick
         self.render_mode = render_mode
 
-        # ====== 報酬パラメータ ======
-        self.PERIOD_WARMUP: int = 300
-        self.PERIOD_MA_1: int = 30
-        self.PERIOD_MA_2: int = 300
-        self.N_MINUS_MAX: int = 300
-        self.REWARD_CROSS_CROSS: float = 1.5  # クロス・シグナル時のエントリで報酬
-        self.RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
-        self.RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
-        self.COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
-        self.NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
+        # データクラスのインスタンスを定義
+        self.s = EnvData()
 
-        # 定数
-        self.MAX_TRADE: int = 200  # 約定数上限
-
-        # ====== 必要な観測値を追加 ======
-        # 短周期移動平均 MA1
-        ma1 = MovingAverage(window_size=self.PERIOD_MA_1)
-        df_tick["MA1"] = [ma1.update(p) for p in df_tick["Price"]]
-        ma2 = MovingAverage(window_size=self.PERIOD_MA_2)
-        df_tick["MA2"] = [ma2.update(p) for p in df_tick["Price"]]
-        df_tick["DiffMA"] = (df_tick["MA1"] - df_tick["MA2"]) / df_tick["MA2"]
-        # 出来高加重平均価格
-        vwap = VWAP()
-        df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(df_tick["Price"], df_tick["Volume"])]
-        # 乖離度 (MA1 - VWAP) / VWAP
-        df_tick["DiffVWAP"] = (df_tick["MA1"] - df_tick["VWAP"]) / df_tick["VWAP"]
-
-        # ====== 寄り付き時のタイムスタンプと始値の取得 ======
-        self.ts0, self.price0, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(0)
-
-        # インスタンス変数の初期化
-        self.row: int = 0  # ティックデータの行位置
-        self.position: PositionType = PositionType.NONE  # ポジション
-        # self.profit: float = 0.0  # 含み損益
-        self.diff_ma_pre = diff_ma
-        self.diff_vwap_pre = diff_vwap
-        self.profit_pre: float = 0.0  # 一つ前の含み損益
-        self.n_trade: int = 0  # 約定回数
-        self.count_negative: int = 0  # 含み損の継続カウンタ
-        # 報酬系
-        self.pnl_total = 0  # エピソードにおける総報酬
-        self.dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
+        # ====== データフレームに必要な観測値を追加 ======
+        self._prep_observations()
 
         # ポジション・マネージャ
         self.posman = posman = PositionManager()
         posman.initPosition([self.CODE])
 
-        # ====== Define action_space（行動空間） ======
+        # ====== 行動空間 action_space の定義 ======
         n_action_space = len(ActionType)
         self.action_space = spaces.Discrete(n_action_space)
 
-        # print(df_tick.tail())
-
-        # ====== Define observation_space（観測値空間） ======
+        # ====== 観測（特徴量）空間 observation_space の定義 ======
         """
         【観測値】- VecNormalize Wrapper を使用する前提
-        [market]
+        [market] - VecNormalize Wrapper で標準化
         1. Price（株価）
         2. MA1（短周期移動平均）
         3. MA2（長周期移動平均）
         4. VWAP（VWAP）
         5. Profit（含み損益）
-        [cross]
-        1. DiffMA（乖離率 - (MA1 - MA2) / MA2）
-        2. DiffVWAP（乖離率 - (MA1 - VWAP) / VWAP）
-        [counter]
+        [cross] - 符号が重要であるため標準化しない
+        1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
+        2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+        [counter] - VecNormalize Wrapper で標準化
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
-        [position]
+        [position] - 標準化不要
         1. SHORT
         2. NONE
         3. LONG
@@ -108,6 +64,19 @@ class TrainingEnv(gym.Env):
         # デバッグ用観測値
         self.obs = {}
 
+    def _prep_observations(self):
+        # 短周期移動平均 MA1
+        ma1 = MovingAverage(window_size=self.s.PERIOD_MA_1)
+        self.df_tick["MA1"] = [ma1.update(p) for p in self.df_tick["Price"]]
+        ma2 = MovingAverage(window_size=self.s.PERIOD_MA_2)
+        self.df_tick["MA2"] = [ma2.update(p) for p in self.df_tick["Price"]]
+        self.df_tick["DiffMA"] = (self.df_tick["MA1"] - self.df_tick["MA2"]) / self.df_tick["MA2"]
+        # 出来高加重平均価格
+        vwap = VWAP()
+        self.df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(self.df_tick["Price"], self.df_tick["Volume"])]
+        # 乖離度 (MA1 - VWAP) / VWAP
+        self.df_tick["DiffVWAP"] = (self.df_tick["MA1"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"]
+
     def action_masks(self) -> np.ndarray:
         """
         行動マスク
@@ -115,29 +84,15 @@ class TrainingEnv(gym.Env):
         - ウォーミングアップ期間 → 強制 HOLD
         - ナンピン取引の禁止
 
-        （参考）
-        class ActionType(Enum):
-            HOLD = 0
-            BUY = 1
-            SELL = 2
-
         :return: mask
         """
-        if self.row < self.PERIOD_WARMUP:
+        if self.s.row < self.s.PERIOD_WARMUP:
             # ウォーミングアップ期間 → 強制 HOLD
-            mask = np.array([True, False, False], dtype=np.bool_)
-        elif self.position == PositionType.NONE:
-            # 建玉なし → 取りうるアクション: HOLD, BUY, SELL
-            mask = np.array([True, True, True], dtype=np.bool_)
-        elif self.position == PositionType.LONG:
-            # 建玉あり LONG → 取りうるアクション: HOLD, SELL
-            mask = np.array([True, False, True], dtype=np.bool_)
-        elif self.position == PositionType.SHORT:
-            # 建玉あり SHORT → 取りうるアクション: HOLD, BUY
-            mask = np.array([True, True, False], dtype=np.bool_)
-        else:
-            raise TypeError(f"Unknown PositionType: {self.position}")
-        return mask
+            return self.s.MASK_HOLD_ONLY
+        try:
+            return self.s.POSITION_MASKS[self.s.position]
+        except KeyError:
+            raise TypeError(f"Unknown PositionType: {self.s.position}")
 
     def get_data(self, row: int) -> tuple:
         """
@@ -156,7 +111,7 @@ class TrainingEnv(gym.Env):
         ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
         :return:
         """
-        return pd.DataFrame(self.dict_reward)
+        return pd.DataFrame(self.s.dict_reward)
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -171,16 +126,8 @@ class TrainingEnv(gym.Env):
         初期化処理
         :return:
         """
-        # インスタンス変数の初期化
-        self.row: int = 0  # ティックデータの行位置
-        self.position: PositionType = PositionType.NONE  # ポジション
-        # self.profit: float = 0.0  # 含み損益
-        self.profit_pre: float = 0.0  # 一つ前の含み損益
-        self.n_trade: int = 0  # 約定回数
-        self.count_negative: int = 0  # 含み損の継続カウンタ
-        # 報酬系
-        self.pnl_total = 0  # エピソードにおける総報酬
-        self.dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
+        # データクラスのインスタンスを再定義
+        self.s = EnvData()
 
         # ポジション・マネージャのリセットと初期化
         self.posman.reset()
@@ -200,11 +147,6 @@ class TrainingEnv(gym.Env):
         # 環境の初期化（常に寄り付きから開始）
         self.init_status()
 
-        # ====== データフレームの最初の行のデータを取得 ======
-        ts, price, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(0)
-        # 含み損益
-        profit = 0
-
         # ====== 観測値（状態） ======
         market = np.array(
             [
@@ -218,7 +160,7 @@ class TrainingEnv(gym.Env):
         )
         cross = np.array([0, 0], dtype=np.float32)
         counter = np.array([0, 0], dtype=np.float32)
-        position = position_to_onehot(self.position).astype(np.float32)
+        position = position_to_onehot(self.s.position).astype(np.float32)
         obs = {"market": market, "cross": cross, "counter": counter, "position": position}
 
         info = {}  # Additional debug info
@@ -231,7 +173,7 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # ====== データフレームからデータを一行分取得 ======
-        ts, price, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(self.row)
+        ts, price, ma1, ma2, diff_ma, vwap, diff_vwap = self.get_data(self.s.row)
         # 含み損益の取得
         profit = self.posman.getProfit(self.CODE, price)
         # 初期報酬
@@ -242,24 +184,23 @@ class TrainingEnv(gym.Env):
         # ====== 建玉管理 ======
         action_type = ActionType(action)
         if action_type == ActionType.BUY:
-            if self.position == PositionType.NONE:
+            if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 self.posman.openPosition(self.CODE, ts, price, action_type)
-                self.position = PositionType.LONG  # ポジションを更新
-                self.n_trade += 1  # 取引回数の更新
-                self.profit_pre = 0.0  # 一つ前の含み益
-                # 【報酬】
-                reward -= self.COST_CONTRACT  # 約定コスト
-                # 買建用 VWAP 判定
-                # reward -= diff_vwap  # diff_vwap が負の時に買建すれば報酬
+                self.s.position = PositionType.LONG  # ポジションを更新
+                self.s.n_trade += 1  # 取引回数の更新
+                self.s.profit_pre = 0.0  # 一つ前の含み益
 
-                # ゴールデン・クロス時のエントリ報酬
-                if self.diff_ma_pre < 0 < diff_ma:
-                    reward += self.REWARD_CROSS_CROSS
-                if self.diff_vwap_pre < 0 < diff_vwap:
-                    reward += self.REWARD_CROSS_CROSS
+                # 【報酬・ペナルティ】
+                reward -= self.s.COST_CONTRACT  # 約定コスト
 
-            elif self.position == PositionType.SHORT:
+                # ゴールデン・クロス時のエントリ報酬（約定コスト相殺＋α）
+                if self.s.diff_ma_pre < 0 < diff_ma:
+                    reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
+                if self.s.diff_vwap_pre < 0 < diff_vwap:
+                    reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
+
+            elif self.s.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 reward += self.position_close(ts, price, profit)
 
@@ -267,24 +208,23 @@ class TrainingEnv(gym.Env):
                 raise RuntimeError("Trade rule violation!")
 
         elif action_type == ActionType.SELL:
-            if self.position == PositionType.NONE:
+            if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 self.posman.openPosition(self.CODE, ts, price, action_type)
-                self.position = PositionType.SHORT  # ポジションを更新
-                self.n_trade += 1  # 取引回数の更新
-                self.profit_pre = 0.0  # 一つ前の含み益
-                # 【報酬】
-                reward -= self.COST_CONTRACT  # 約定コスト
-                # 売建用 VWAP 判定
-                # reward += diff_vwap  # diff_vwap が正の時に売建すれば報酬
+                self.s.position = PositionType.SHORT  # ポジションを更新
+                self.s.n_trade += 1  # 取引回数の更新
+                self.s.profit_pre = 0.0  # 一つ前の含み益
 
-                # デッド・クロス時のエントリ報酬
-                if diff_ma < 0 < self.diff_ma_pre:
-                    reward += self.REWARD_CROSS_CROSS
-                if diff_vwap < 0 < self.diff_vwap_pre:
-                    reward += self.REWARD_CROSS_CROSS
+                # 【報酬・ペナルティ】
+                reward -= self.s.COST_CONTRACT  # 約定コスト
 
-            elif self.position == PositionType.LONG:
+                # デッド・クロス時のエントリ報酬（約定コスト相殺＋α）
+                if diff_ma < 0 < self.s.diff_ma_pre:
+                    reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
+                if diff_vwap < 0 < self.s.diff_vwap_pre:
+                    reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
+
+            elif self.s.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 reward += self.position_close(ts, price, profit)
 
@@ -292,54 +232,44 @@ class TrainingEnv(gym.Env):
                 raise RuntimeError("Trade rule violation!")
 
         elif action_type == ActionType.HOLD:
-            if self.position != PositionType.NONE:
+            if self.s.position != PositionType.NONE:
+                # 【報酬・ペナルティ】
                 # 含み益があれば幾分かを報酬に
-                reward += profit * self.RATIO_PROFIT_HOLD
+                reward += profit * self.s.RATIO_PROFIT_HOLD
                 # 含み益の増減に応じて幾分かを報酬に
-                reward += (profit - self.profit_pre) * self.RATIO_PROFIT_CHANGE_HOLD
-                self.profit_pre = profit  # 一つ前の含み益の更新
+                reward += (profit - self.s.profit_pre) * self.s.RATIO_PROFIT_CHANGE_HOLD
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
         # ====== 連続含み益評価 ======
         if profit < 0:
-            self.count_negative += 1
+            self.s.count_negative += 1
         else:
-            self.count_negative = 0
-        penalty_negative = - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
+            self.s.count_negative = 0
+        penalty_negative = - (float(self.s.count_negative) / self.s.N_MINUS_MAX) ** 2
         reward += penalty_negative
-
-        # ====== モデル報酬の保持（分析用） ======
-        self.dict_reward["ts"].append(ts)
-        self.dict_reward["reward"].append(reward)
-
-        # ====== テクニカル分析用の情報 ======
-        dict_technical = {
-            "ts": ts,
-            "price": price,
-            "ma1": ma1,
-            "ma2": ma2,
-            "vwap": vwap,
-            "profit": profit,
-            "diff_ma": diff_ma,
-            "diff_vwap": diff_vwap,
-            "n_trade": self.n_trade,
-            "count_negative": self.count_negative,
-        }
-        info["technical"] = dict_technical
-
-        # 一つ前の値を更新
-        self.diff_ma_pre = diff_ma
-        self.diff_vwap_pre = diff_vwap
+        if self.s.count_negative > self.s.N_MINUS_MAX:
+            self.s.flag_losscut_consecutive = True
+        else:
+            self.s.flag_losscut_consecutive = False
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
-        if len(self.df_tick) - 1 <= self.row:
+
+        if len(self.df_tick) - 1 <= self.s.row:
             # ティックデータの末尾
             if self.posman.hasPosition(self.CODE):
                 # 建玉があれば強制返済
                 reward += self.position_close_force(ts, price, profit)
+
+            if self.s.n_trade > 0:
+                reward += 10.0 / self.s.n_trade
+            else:
+                df = self.get_reward()
+                r = df["reward"].sum()
+                if r > 0:
+                    reward = -r
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
@@ -347,18 +277,15 @@ class TrainingEnv(gym.Env):
             info["transaction"] = self.get_transaction_result()
             # 報酬情報（データフレーム）
             info["reward"] = self.get_reward()
-            print(f"約定回数 : {self.n_trade}")
-
-        # ステップ（データフレームの行）更新
-        self.row += 1
+            print(f"約定回数 : {self.s.n_trade}")
 
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                price - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
-                ma1 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
-                ma2 - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
-                vwap - self.price0,  # 標準化スケーリングの無駄を減らすため始値分シフト
+                price,
+                ma1,
+                ma2,
+                vwap,
                 profit,
             ],
             dtype=np.float32
@@ -372,18 +299,45 @@ class TrainingEnv(gym.Env):
         )
         counter = np.array(
             [
-                self.n_trade,
-                self.count_negative
+                self.s.n_trade,
+                self.s.count_negative
             ],
             dtype=np.float32
         )
-        position = position_to_onehot(self.position).astype(np.float32)
+        position = position_to_onehot(self.s.position).astype(np.float32)
         self.obs = obs = {
             "market": market,
             "cross": cross,
             "counter": counter,
             "position": position,
         }
+
+        # 一つ前の値を更新
+        self.s.profit_pre = profit  # 一つ前の含み益の更新
+        self.s.diff_ma_pre = diff_ma
+        self.s.diff_vwap_pre = diff_vwap
+
+        # ステップ（データフレームの行）更新
+        self.s.row += 1
+
+        # ====== モデル報酬の保持（分析用） ======
+        self.s.dict_reward["ts"].append(ts)
+        self.s.dict_reward["reward"].append(reward)
+
+        # ====== テクニカル分析用の情報 ======
+        dict_technical = {
+            "ts": ts,
+            "price": price,
+            "ma1": ma1,
+            "ma2": ma2,
+            "vwap": vwap,
+            "profit": profit,
+            "diff_ma": diff_ma,
+            "diff_vwap": diff_vwap,
+            "n_trade": self.s.n_trade,
+            "count_negative": self.s.count_negative,
+        }
+        info["technical"] = dict_technical
 
         return obs, reward, terminated, truncated, info
 
@@ -397,18 +351,19 @@ class TrainingEnv(gym.Env):
         """
         # ポジション管理
         self.posman.closePosition(self.CODE, ts, price)
-        self.position = PositionType.NONE  # ポジションを更新
-        self.n_trade += 1  # 取引回数の更新
-        self.profit_pre = 0.0  # 一つ前の含み益
+        self.s.position = PositionType.NONE  # ポジションを更新
+        self.s.n_trade += 1  # 取引回数の更新
+        self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
         r = 0
-        r -= self.COST_CONTRACT  # 約定コスト
+        r -= self.s.COST_CONTRACT  # 約定コスト
         r += profit  # 含み損益分そっくり報酬
         # 連続含み損
-        if self.count_negative > 0:
-            # ロスカットに対して僅かな報酬付与
-            r += float(self.count_negative) / self.N_MINUS_MAX
-            self.count_negative = 0
+        if self.s.flag_losscut_consecutive:
+            # ロスカットに対して約定コストを相殺＋αの報酬
+            r += self.s.COST_CONTRACT + 0.5
+        self.s.flag_losscut_consecutive = False
+        self.s.count_negative = 0
         return r
 
     def position_close_force(self, ts: float, price: float, profit: float) -> int:
@@ -421,12 +376,12 @@ class TrainingEnv(gym.Env):
         """
         # ポジション管理
         self.posman.closePosition(self.CODE, ts, price, "強制返済")
-        self.position = PositionType.NONE  # ポジションを更新
-        self.n_trade += 1  # 取引回数の更新
-        self.profit_pre = 0.0  # 一つ前の含み益
+        self.s.position = PositionType.NONE  # ポジションを更新
+        self.s.n_trade += 1  # 取引回数の更新
+        self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
         r = 0
-        r -= self.COST_CONTRACT  # 約定コスト
+        r -= self.s.COST_CONTRACT  # 約定コスト
         r += profit  # 含み損益分そっくり報酬
         return r
 

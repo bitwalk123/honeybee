@@ -17,7 +17,7 @@ class EnvData:
     PERIOD_MA_2: int = 300
     N_MINUS_MAX: int = 300
     # 報酬系
-    REWARD_CROSS_CROSS: float = 1.5  # クロス・シグナル時のエントリで報酬
+    REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
@@ -36,6 +36,9 @@ class EnvData:
     diff_ma_pre: float = 0.0
     diff_vwap_pre: float = 0.0
     profit_pre: float = 0.0  # 一つ前の含み損益
+
+    # フラグ関連
+    flag_losscut_consecutive = False
 
     # ====== マスク処理関連 ======
     MASK_HOLD_ONLY = np.array([True, False, False], dtype=np.bool_)

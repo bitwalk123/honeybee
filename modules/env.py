@@ -1,4 +1,5 @@
 import gymnasium as gym
+import math
 import numpy as np
 import pandas as pd
 from gymnasium import spaces
@@ -263,16 +264,10 @@ class TrainingEnv(gym.Env):
                 # 建玉があれば強制返済
                 reward += self.position_close_force(ts, price, profit)
 
-            if 0 < self.s.n_trade:
-                # 約定回数に応じた報酬
-                if 0 < self.s.n_trade <= 4:
-                    reward += 1
-                elif 4 < self.s.n_trade <= 25:
-                    reward += self.s.n_trade / 5.0
-                else:
-                    reward += 100.0 / self.s.n_trade
-            else:
-                reward -= 10.0
+            # 約定回数に応じた報酬（n で極大, r_max が最高報酬）
+            n = 25
+            r_max = 10.0
+            reward += r_max * self.s.n_trade * math.e ** (1 - self.s.n_trade / n) / n
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"

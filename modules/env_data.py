@@ -14,7 +14,7 @@ class EnvData:
     # インジケータ系
     PERIOD_WARMUP: int = 300
     PERIOD_MA_1: int = 60
-    PERIOD_MA_2: int = 600
+    PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬

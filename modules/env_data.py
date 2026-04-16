@@ -18,8 +18,8 @@ class EnvData:
     N_MINUS_MAX: int = 300
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
-    RATIO_PROFIT_HOLD: float = 0.02  # HOLD（建玉あり）時の含み損益からの報酬比率
-    RATIO_PROFIT_CHANGE_HOLD: float = 0.005  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
+    RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
+    RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 

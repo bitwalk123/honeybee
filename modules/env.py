@@ -264,12 +264,8 @@ class TrainingEnv(gym.Env):
                 reward += self.position_close_force(ts, price, profit)
 
             if self.s.n_trade > 0:
+                # 約定回数に応じた報酬
                 reward += 10.0 / self.s.n_trade
-            else:
-                df = self.get_reward()
-                r = df["reward"].sum()
-                if r > 0:
-                    reward = -r
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"

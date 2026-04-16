@@ -263,9 +263,16 @@ class TrainingEnv(gym.Env):
                 # 建玉があれば強制返済
                 reward += self.position_close_force(ts, price, profit)
 
-            if self.s.n_trade > 0:
+            if 0 < self.s.n_trade:
                 # 約定回数に応じた報酬
-                reward += 10.0 / self.s.n_trade
+                if 0 < self.s.n_trade <= 4:
+                    reward += 1
+                elif 4 < self.s.n_trade <= 25:
+                    reward += self.s.n_trade / 5.0
+                else:
+                    reward += 100.0 / self.s.n_trade
+            else:
+                reward -= 10.0
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"

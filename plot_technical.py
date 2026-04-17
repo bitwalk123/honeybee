@@ -28,8 +28,10 @@ if __name__ == "__main__":
     ]
     print(df_transaction_last)
     pnl = df_transaction_last["損益"].sum()
+    n_trade = len(df_transaction_last)
     print("---")
-    print(f"実現損益 : {pnl} 円/株")
+    xlabel = f"実現損益 : {pnl} 円/株, 約定回数 : {n_trade} 回"
+    print(xlabel)
 
     # Matplotlib の共通設定
     FONT_PATH = "fonts/RictyDiminished-Regular.ttf"
@@ -57,7 +59,7 @@ if __name__ == "__main__":
 
     # 株価
     i = 0
-    title = f"{dt_date} : {code} の推論パフォーマンス, 損益 {pnl} 円/株"
+    title = f"{dt_date} : {code} の推論パフォーマンス"
     ax[i].set_xlim(dt_left, dt_right)
     plot_main(ax[i], df, title)
 
@@ -72,6 +74,8 @@ if __name__ == "__main__":
     # 含み損益
     i += 1
     plot_profit(ax[i], df)
+
+    ax[i].set_xlabel(xlabel)
 
     plt.tight_layout()
     output = "technical.png"

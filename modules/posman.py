@@ -1,6 +1,6 @@
 import pandas as pd
 
-from structs.app_enum import ActionType
+from structs.app_enum import ActionType, PositionType
 
 
 class PositionManager:
@@ -30,7 +30,7 @@ class PositionManager:
             self.dict_total[code] = 0.0  # 銘柄毎の収益
             self.dict_action[code] = ActionType.HOLD
 
-    def openPosition(self, code: str, ts: float, price: float, action: ActionType, note: str = "") -> None:
+    def openPosition(self, code: str, ts: float, price: float, action: ActionType, note: str = "") -> PositionType:
         """
         ポジションをオープン（建玉取得）
         :param code:
@@ -50,14 +50,21 @@ class PositionManager:
         self.records["銘柄コード"].append(code)
         if action == ActionType.BUY:
             self.records["売買"].append("買建")
+            position = PositionType.LONG
         elif action == ActionType.SELL:
             self.records["売買"].append("売建")
+            position = PositionType.SHORT
+        else:
+            msg: str = f"Invalid action type {action} for code {code}"
+            raise ValueError(msg)
         self.records["約定単価"].append(price)
         self.records["約定数量"].append(self.unit)
         self.records["損益"].append(None)
         self.records["備考"].append(note)
 
-    def closePosition(self, code: str, ts: float, price: float, note: str = "") -> None:
+        return position
+
+    def closePosition(self, code: str, ts: float, price: float, note: str = "") -> PositionType:
         """
         ポジションをクローズ（建玉返済）
         :param code:
@@ -71,10 +78,12 @@ class PositionManager:
         # 損益計算
         if action == ActionType.BUY:
             profit = (price - self.dict_price[code]) * self.unit
+            position = PositionType.NONE
         elif action == ActionType.SELL:
             profit = (self.dict_price[code] - price) * self.unit
+            position = PositionType.NONE
         else:
-            msg: str = f"{__name__}: Cannot close position: invalid action type {action} for code {code}"
+            msg: str = f"Invalid action type {action} for code {code}"
             raise ValueError(msg)
 
         self.dict_total[code] += profit
@@ -96,6 +105,8 @@ class PositionManager:
         # 売買状態のリセット
         self.dict_price[code] = 0.0
         self.dict_action[code] = ActionType.HOLD
+
+        return position
 
     def getProfit(self, code: str, price: float) -> float:
         if price == 0.0:

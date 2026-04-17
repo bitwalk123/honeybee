@@ -1,3 +1,5 @@
+from typing import Literal
+
 import gymnasium as gym
 import math
 import numpy as np
@@ -187,18 +189,12 @@ class TrainingEnv(gym.Env):
         if action_type == ActionType.BUY:
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
-                self.posman.openPosition(self.CODE, ts, price, action_type)
-                self.s.position = PositionType.LONG  # ポジションを更新
-                self.s.n_trade += 1  # 取引回数の更新
-                self.s.profit_pre = 0.0  # 一つ前の含み益
-
-                # 【報酬・ペナルティ】
-                reward -= self.s.COST_CONTRACT  # 約定コスト
+                reward += self.position_open(ts, price, action_type)
 
                 # ゴールデン・クロス時のエントリ報酬（約定コスト相殺＋α）
-                if self.s.diff_ma_pre < 0 < diff_ma:
+                if self.s.diff_ma_pre < 0 <= diff_ma:
                     reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
-                if self.s.diff_vwap_pre < 0 < diff_vwap:
+                if self.s.diff_vwap_pre < 0 <= diff_vwap:
                     reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
 
             elif self.s.position == PositionType.SHORT:
@@ -211,18 +207,12 @@ class TrainingEnv(gym.Env):
         elif action_type == ActionType.SELL:
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
-                self.posman.openPosition(self.CODE, ts, price, action_type)
-                self.s.position = PositionType.SHORT  # ポジションを更新
-                self.s.n_trade += 1  # 取引回数の更新
-                self.s.profit_pre = 0.0  # 一つ前の含み益
-
-                # 【報酬・ペナルティ】
-                reward -= self.s.COST_CONTRACT  # 約定コスト
+                reward += self.position_open(ts, price, action_type)
 
                 # デッド・クロス時のエントリ報酬（約定コスト相殺＋α）
-                if diff_ma < 0 < self.s.diff_ma_pre:
+                if diff_ma <= 0 < self.s.diff_ma_pre:
                     reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
-                if diff_vwap < 0 < self.s.diff_vwap_pre:
+                if diff_vwap <= 0 < self.s.diff_vwap_pre:
                     reward += self.s.COST_CONTRACT + self.s.REWARD_CROSS_ENTRY
 
             elif self.s.position == PositionType.LONG:
@@ -340,7 +330,17 @@ class TrainingEnv(gym.Env):
 
         return obs, reward, terminated, truncated, info
 
-    def position_close(self, ts: float, price: float, profit: float) -> int:
+    def position_open(self, ts: float, price: float, action_type: ActionType) -> float:
+        self.s.position = self.posman.openPosition(self.CODE, ts, price, action_type)
+        # self.s.position = PositionType.LONG  # ポジションを更新
+        self.s.n_trade += 1  # 取引回数の更新
+        self.s.profit_pre = 0.0  # 一つ前の含み益
+        # 【報酬・ペナルティ】
+        r = 0.0
+        r -= self.s.COST_CONTRACT  # 約定コスト
+        return r
+
+    def position_close(self, ts: float, price: float, profit: float) -> float:
         """
         ポジション・クローズ
         :param ts:
@@ -349,12 +349,12 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # ポジション管理
-        self.posman.closePosition(self.CODE, ts, price)
-        self.s.position = PositionType.NONE  # ポジションを更新
+        self.s.position = self.posman.closePosition(self.CODE, ts, price)
+        # self.s.position = PositionType.NONE  # ポジションを更新
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
-        r = 0
+        r = 0.0
         r -= self.s.COST_CONTRACT  # 約定コスト
         r += profit  # 含み損益分そっくり報酬
         # 連続含み損
@@ -374,8 +374,8 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # ポジション管理
-        self.posman.closePosition(self.CODE, ts, price, "強制返済")
-        self.s.position = PositionType.NONE  # ポジションを更新
+        self.s.position = self.posman.closePosition(self.CODE, ts, price, "強制返済")
+        # self.s.position = PositionType.NONE  # ポジションを更新
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】

@@ -266,8 +266,8 @@ class TrainingEnv(gym.Env):
 
             # 約定回数に応じた報酬（n で極大, r_max が最高報酬）
             n = 25
-            # r_max = 10.0 # 4/16
-            r_max = 5.0  # 4/17
+            # r_max = 10.0 # 4/16 → 4/17
+            r_max = 5.0  # 4/17 → 4/18
             reward += r_max * self.s.n_trade * math.e ** (1 - self.s.n_trade / n) / n
 
             truncated = True  # ← ステップ数上限による終了

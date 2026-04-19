@@ -34,6 +34,10 @@ if __name__ == "__main__":
         for file_excel in list_excel:
             print(file_excel)
 
+    file_excel = list_excel[0]
+    agent.train(file_excel, 1)
+    sys.exit()
+
     # 学習
     for i, file_excel in enumerate(list_excel):
         # 概ねのエピソード数

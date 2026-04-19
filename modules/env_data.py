@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -23,22 +23,35 @@ class EnvData:
     COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 
+    COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
+    COL_CROSS_MA_DEAD: str = "cross_ma_dead"
+
     # インスタンス変数系（初期値が自明な変数のみ）
     row: int = 0  # ティックデータの行位置
     position: PositionType = PositionType.NONE  # ポジション
     n_trade: int = 0  # 約定回数
     count_negative: int = 0  # 含み損の継続カウンタ
-    pnl_total = 0  # エピソードにおける総報酬
-    dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
+    pnl_total: float = 0  # エピソードにおける総報酬
+    # dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
+    dict_reward: dict = field(default_factory=lambda: defaultdict(list))
+
+    ts: float = 0.0
+    price: float = 0.0
+    ma1: float = 0.0
+    ma2: float = 0.0
+    diff_ma: float = 0.0
+    vwap: float = 0.0
+    diff_vwap: float = 0.0
+    profit: float = 0.0  # 含み損益
 
     ts_open: float = 0.0
     price_open: float = 0.0
-    diff_ma_pre: float = 0.0
-    diff_vwap_pre: float = 0.0
+    # diff_ma_pre: float = 0.0
+    # diff_vwap_pre: float = 0.0
     profit_pre: float = 0.0  # 一つ前の含み損益
 
     # フラグ関連
-    flag_losscut_consecutive = False
+    flag_losscut_consecutive: bool = False
 
     # ====== マスク処理関連 ======
     MASK_HOLD_ONLY = np.array([True, False, False], dtype=np.bool_)

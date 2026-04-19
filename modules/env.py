@@ -91,8 +91,9 @@ class TrainingEnv(gym.Env):
     def _prep_rewards(self):
         colname1 = self.s.COL_CROSS_MA_GOLDEN
         colname2 = self.s.COL_CROSS_MA_DEAD
-        n = len(self.df_tick)
-        w = 60
+        n: int = len(self.df_tick)
+        w: int = 60
+        p: float = 1.5
         # クロス・ポイント
         diff_ma_pre: float | None = None
         for r in range(n):
@@ -100,14 +101,14 @@ class TrainingEnv(gym.Env):
             if diff_ma_pre is None:
                 self.df_tick.at[r, colname1] = 0.0
             elif diff_ma_pre <= 0 < diff_ma:
-                self.df_tick.at[r, colname1] = 1.0
+                self.df_tick.at[r, colname1] = p
             else:
                 self.df_tick.at[r, colname1] = 0.0
 
             if diff_ma_pre is None:
                 self.df_tick.at[r, colname2] = 0.0
             elif diff_ma <= 0 < diff_ma_pre:
-                self.df_tick.at[r, colname2] = 1.0
+                self.df_tick.at[r, colname2] = p
             else:
                 self.df_tick.at[r, colname2] = 0.0
 
@@ -117,24 +118,24 @@ class TrainingEnv(gym.Env):
         for r in range(n):
             v1 = self.df_tick.at[r, colname1]
             v2 = self.df_tick.at[r, colname2]
-            if v1 == 1.0:
+            if v1 == p:
                 for i in range(w):
                     denom = ((i + 1) * 2) ** 2
                     r_pre = r - i - 1
                     if 0 <= r_pre:
-                        self.df_tick.at[r_pre, colname1] += 1 / denom
+                        self.df_tick.at[r_pre, colname1] += p / denom
                     r_post = r + i + 1
                     if r_post < n - 1:
-                        self.df_tick.at[r_post, colname1] += 1 / denom
-            if v2 == 1.0:
+                        self.df_tick.at[r_post, colname1] += p / denom
+            if v2 == p:
                 for i in range(w):
                     denom = ((i + 1) * 2) ** 2
                     r_pre = r - i - 1
                     if 0 <= r_pre:
-                        self.df_tick.at[r_pre, colname2] += 1 / denom
+                        self.df_tick.at[r_pre, colname2] += p / denom
                     r_post = r + i + 1
                     if r_post < n - 1:
-                        self.df_tick.at[r_post, colname2] += 1 / denom
+                        self.df_tick.at[r_post, colname2] += p / denom
 
         # トレーニング・データの保存
         print("トレーニングデータを保存しました。")

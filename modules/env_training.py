@@ -286,6 +286,17 @@ class TrainingEnv(gym.Env):
         # ====== 連続含み損評価 ======
         self.s.update_count_negative()
         reward += self.s.get_penalty_negative()
+        if self.s.flag_losscut_consecutive:
+            # 【ロスカット】
+            if self.posman.hasPosition(self.CODE):
+                _ = self.position_close_force()
+        """
+        if self.s.is_losscut():
+            # 【ロスカット】
+            if self.posman.hasPosition(self.CODE):
+                _ = self.position_close_force()
+        """
+
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)

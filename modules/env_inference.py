@@ -49,13 +49,13 @@ class InferenceEnv(TrainingEnv):
 
         # ====== 連続含み損評価 ======
         self.s.update_count_negative()
-        """
         if self.s.flag_losscut_consecutive:
-            # 【推論ではロスカット】
+            # 【ロスカット】
             if self.posman.hasPosition(self.CODE):
                 _ = self.position_close_force()
+        """
         if self.s.is_losscut():
-            # 【推論ではロスカット】
+            # 【ロスカット】
             if self.posman.hasPosition(self.CODE):
                 _ = self.position_close_force()
         """

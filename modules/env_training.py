@@ -1,5 +1,4 @@
 import gymnasium as gym
-import math
 import numpy as np
 import pandas as pd
 from gymnasium import spaces
@@ -284,10 +283,10 @@ class TrainingEnv(gym.Env):
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
-        # ====== 連続含み益評価 ======
+        # ====== 連続含み損評価 ======
         self.s.update_count_negative()
         reward += self.s.get_penalty_negative()
-        self.s.update_flag_losscut_consecutive()
+        # self.s.update_flag_losscut_consecutive()
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
@@ -328,7 +327,6 @@ class TrainingEnv(gym.Env):
 
     def position_open(self, action_type: ActionType) -> float:
         self.s.position = self.posman.openPosition(self.CODE, self.s.ts, self.s.price, action_type)
-        # self.s.position = PositionType.LONG  # ポジションを更新
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬・ペナルティ】
@@ -336,44 +334,29 @@ class TrainingEnv(gym.Env):
         r -= self.s.COST_CONTRACT  # 約定コスト
         return r
 
-    def position_close(self) -> float:
+    def position_close(self, note="") -> float:
         """
         ポジション・クローズ
         :return:
         """
         # ポジション管理
-        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price)
-        # self.s.position = PositionType.NONE  # ポジションを更新
+        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price, note=note)
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
         r = 0.0
         r -= self.s.COST_CONTRACT  # 約定コスト
         r += self.s.profit  # 含み損益分そっくり報酬
-        # 連続含み損
-        if self.s.flag_losscut_consecutive:
-            # ロスカットに対して約定コストを相殺＋αの報酬
-            r += self.s.COST_CONTRACT + 0.5
-        self.s.flag_losscut_consecutive = False
-        self.s.count_negative = 0
+        self.s.reset_count_negative()
         return r
 
-    def position_close_force(self) -> int:
+    def position_close_force(self) -> float:
         """
         ポジション・クローズ（強制）
         :param profit:
         :return:
         """
-        # ポジション管理
-        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price, "強制返済")
-        # self.s.position = PositionType.NONE  # ポジションを更新
-        self.s.n_trade += 1  # 取引回数の更新
-        self.s.profit_pre = 0.0  # 一つ前の含み益
-        # 【報酬】
-        r = 0
-        r -= self.s.COST_CONTRACT  # 約定コスト
-        r += self.s.profit  # 含み損益分そっくり報酬
-        return r
+        return self.position_close(note="強制返済")
 
     def render(self) -> None:
         # Implement visualization logic based on self.render_mode

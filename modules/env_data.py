@@ -167,6 +167,10 @@ class EnvData:
     def inc_row(self):
         self.row += 1
 
+    def reset_count_negative(self):
+        self.count_negative = 0
+        self.flag_losscut_consecutive = False
+
     def set_data(self, row):
         self.ts = row["Time"]
         self.price = row["Price"]
@@ -182,11 +186,18 @@ class EnvData:
         else:
             self.count_negative = 0
 
+        if self.count_negative > self.N_MINUS_MAX:
+            self.flag_losscut_consecutive = True
+        else:
+            self.flag_losscut_consecutive = False
+
+    """
     def update_flag_losscut_consecutive(self):
         if self.count_negative > self.N_MINUS_MAX:
             self.flag_losscut_consecutive = True
         else:
             self.flag_losscut_consecutive = False
+    """
 
     def update_dict_reward(self, reward) -> None:
         self.dict_reward["ts"].append(self.ts)

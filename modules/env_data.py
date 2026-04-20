@@ -1,8 +1,11 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 
+import math
 import numpy as np
+import pandas as pd
 
+from funcs.conv import position_to_onehot
 from structs.app_enum import PositionType
 
 
@@ -70,3 +73,124 @@ class EnvData:
         # SHORT
         PositionType.SHORT: MASK_SHORT,
     }
+
+    def get_masks(self):
+        """
+        行動マスク
+        【マスク】
+        - ウォーミングアップ期間 → 強制 HOLD
+        - ナンピン取引の禁止
+
+        :return: mask
+        """
+        if self.row < self.PERIOD_WARMUP:
+            # ウォーミングアップ期間 → 強制 HOLD
+            return self.MASK_HOLD_ONLY
+        try:
+            return self.POSITION_MASKS[self.position]
+        except KeyError:
+            raise TypeError(f"Unknown PositionType: {self.position}")
+
+    def get_obs(self) -> dict:
+        market = np.array(
+            [
+                self.price,
+                self.ma1,
+                self.ma2,
+                self.vwap,
+                self.profit,
+            ],
+            dtype=np.float32
+        )
+        cross = np.array(
+            [
+                self.diff_ma,
+                self.diff_vwap,
+            ],
+            dtype=np.float32
+        )
+        counter = np.array(
+            [
+                self.n_trade,
+                self.count_negative
+            ],
+            dtype=np.float32
+        )
+        position = position_to_onehot(self.position).astype(np.float32)
+        obs = {
+            "market": market,
+            "cross": cross,
+            "counter": counter,
+            "position": position,
+        }
+        return obs
+
+    def get_n_trade_reward(self) -> float:
+        # 約定回数に応じた報酬（n で極大, r_max が最高報酬）
+        n = 25
+        r_max = 5.0  # 4/17 → 4/18
+        return r_max * self.n_trade * math.e ** (1 - self.n_trade / n) / n
+
+    def get_penalty_negative(self) -> float:
+        return - (float(self.count_negative) / self.N_MINUS_MAX) ** 2
+
+    def get_reward(self) -> pd.DataFrame:
+        """
+        ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
+        :return:
+        """
+        return pd.DataFrame(self.dict_reward)
+
+    def get_technicals(self):
+        return {
+            "ts": self.ts,
+            "price": self.price,
+            "ma1": self.ma1,
+            "ma2": self.ma2,
+            "vwap": self.vwap,
+            "profit": self.profit,
+            "diff_ma": self.diff_ma,
+            "diff_vwap": self.diff_vwap,
+            "n_trade": self.n_trade,
+            "count_negative": self.count_negative,
+        }
+
+    def get_reward_unrealized_profit(self) -> float:
+        r = 0
+        # 含み益があれば幾分かを報酬に
+        r += self.profit * self.RATIO_PROFIT_HOLD
+        # 含み益の増減に応じて幾分かを報酬に
+        r += (self.profit - self.profit_pre) * self.RATIO_PROFIT_CHANGE_HOLD
+
+        return r
+
+    def inc_row(self):
+        self.row += 1
+
+    def set_data(self, row):
+        self.ts = row["Time"]
+        self.price = row["Price"]
+        self.ma1 = row["MA1"]
+        self.ma2 = row["MA2"]
+        self.diff_ma = row["DiffMA"]
+        self.vwap = row["VWAP"]
+        self.diff_vwap = row["DiffVWAP"]
+
+    def update_count_negative(self):
+        if self.profit < 0:
+            self.count_negative += 1
+        else:
+            self.count_negative = 0
+
+    def update_flag_losscut_consecutive(self):
+        if self.count_negative > self.N_MINUS_MAX:
+            self.flag_losscut_consecutive = True
+        else:
+            self.flag_losscut_consecutive = False
+
+    def update_dict_reward(self, reward) -> None:
+        self.dict_reward["ts"].append(self.ts)
+        self.dict_reward["reward"].append(reward)
+
+    def update_profit_pre(self):
+        self.profit_pre = self.profit  # 一つ前の含み益の更新

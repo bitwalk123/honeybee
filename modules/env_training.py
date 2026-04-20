@@ -1,5 +1,3 @@
-from typing import Literal
-
 import gymnasium as gym
 import math
 import numpy as np
@@ -137,8 +135,8 @@ class TrainingEnv(gym.Env):
                     if r_post < n - 1:
                         self.df_tick.at[r_post, colname2] += p / denom
 
-        # トレーニング・データの保存
-        print("トレーニングデータを保存しました。")
+        # トレーニング用データの保存
+        print("特徴量などを追加したデータを保存しました。")
         self.df_tick.to_csv("traning_data.csv")
 
     def action_masks(self) -> np.ndarray:
@@ -150,13 +148,7 @@ class TrainingEnv(gym.Env):
 
         :return: mask
         """
-        if self.s.row < self.s.PERIOD_WARMUP:
-            # ウォーミングアップ期間 → 強制 HOLD
-            return self.s.MASK_HOLD_ONLY
-        try:
-            return self.s.POSITION_MASKS[self.s.position]
-        except KeyError:
-            raise TypeError(f"Unknown PositionType: {self.s.position}")
+        return self.s.get_masks()
 
     def get_data(self) -> None:
         """
@@ -166,13 +158,7 @@ class TrainingEnv(gym.Env):
         """
         list_name = ["Time", "Price", "MA1", "MA2", "DiffMA", "VWAP", "DiffVWAP"]
         row = self.df_tick.iloc[self.s.row][list_name]
-        self.s.ts = row["Time"]
-        self.s.price = row["Price"]
-        self.s.ma1 = row["MA1"]
-        self.s.ma2 = row["MA2"]
-        self.s.diff_ma = row["DiffMA"]
-        self.s.vwap = row["VWAP"]
-        self.s.diff_vwap = row["DiffVWAP"]
+        self.s.set_data(row)
 
     def get_reward_cross_ma_golden(self):
         return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_GOLDEN]
@@ -180,15 +166,10 @@ class TrainingEnv(gym.Env):
     def get_reward_cross_ma_dead(self):
         return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_DEAD]
 
+    """
     def get_obs(self):
         return self.obs
-
-    def get_reward(self) -> pd.DataFrame:
-        """
-        ステップ毎に辞書に保持していた報酬情報をデータフレームに変換
-        :return:
-        """
-        return pd.DataFrame(self.s.dict_reward)
+    """
 
     def get_transaction_result(self) -> pd.DataFrame:
         """
@@ -299,23 +280,14 @@ class TrainingEnv(gym.Env):
             else:
                 # 【報酬・ペナルティ】
                 # 含み益があれば幾分かを報酬に
-                reward += self.s.profit * self.s.RATIO_PROFIT_HOLD
-                # 含み益の増減に応じて幾分かを報酬に
-                reward += (self.s.profit - self.s.profit_pre) * self.s.RATIO_PROFIT_CHANGE_HOLD
+                reward += self.s.get_reward_unrealized_profit()
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
 
         # ====== 連続含み益評価 ======
-        if self.s.profit < 0:
-            self.s.count_negative += 1
-        else:
-            self.s.count_negative = 0
-        penalty_negative = - (float(self.s.count_negative) / self.s.N_MINUS_MAX) ** 2
-        reward += penalty_negative
-        if self.s.count_negative > self.s.N_MINUS_MAX:
-            self.s.flag_losscut_consecutive = True
-        else:
-            self.s.flag_losscut_consecutive = False
+        self.s.update_count_negative()
+        reward += self.s.get_penalty_negative()
+        self.s.update_flag_losscut_consecutive()
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
@@ -327,77 +299,30 @@ class TrainingEnv(gym.Env):
                 # 建玉があれば強制返済
                 reward += self.position_close_force()
 
-            # 約定回数に応じた報酬（n で極大, r_max が最高報酬）
-            n = 25
-            # r_max = 10.0 # 4/16 → 4/17
-            r_max = 5.0  # 4/17 → 4/18
-            reward += r_max * self.s.n_trade * math.e ** (1 - self.s.n_trade / n) / n
+            # 約定回数に応じた報酬
+            reward += self.s.get_n_trade_reward()
 
             truncated = True  # ← ステップ数上限による終了
             info["done_reason"] = "truncated: last_tick"
             # 取引情報（データフレーム）
             info["transaction"] = self.get_transaction_result()
             # 報酬情報（データフレーム）
-            info["reward"] = self.get_reward()
+            info["reward"] = self.s.get_reward()
             print(f"約定回数 : {self.s.n_trade}")
 
-        # ====== 観測値（状態） ======
-        market = np.array(
-            [
-                self.s.price,
-                self.s.ma1,
-                self.s.ma2,
-                self.s.vwap,
-                self.s.profit,
-            ],
-            dtype=np.float32
-        )
-        cross = np.array(
-            [
-                self.s.diff_ma,
-                self.s.diff_vwap,
-            ],
-            dtype=np.float32
-        )
-        counter = np.array(
-            [
-                self.s.n_trade,
-                self.s.count_negative
-            ],
-            dtype=np.float32
-        )
-        position = position_to_onehot(self.s.position).astype(np.float32)
-        self.obs = obs = {
-            "market": market,
-            "cross": cross,
-            "counter": counter,
-            "position": position,
-        }
+        # 一つ前の含み益の更新
+        self.s.update_profit_pre()
 
-        # 一つ前の値を更新
-        self.s.profit_pre = self.s.profit  # 一つ前の含み益の更新
+        # ====== 観測値（状態） ======
+        obs = self.s.get_obs()
 
         # ステップ（データフレームの行）更新
-        self.s.row += 1
+        self.s.inc_row()
 
         # ====== モデル報酬の保持（分析用） ======
-        self.s.dict_reward["ts"].append(self.s.ts)
-        self.s.dict_reward["reward"].append(reward)
-
-        # ====== テクニカル分析用の情報 ======
-        dict_technical = {
-            "ts": self.s.ts,
-            "price": self.s.price,
-            "ma1": self.s.ma1,
-            "ma2": self.s.ma2,
-            "vwap": self.s.vwap,
-            "profit": self.s.profit,
-            "diff_ma": self.s.diff_ma,
-            "diff_vwap": self.s.diff_vwap,
-            "n_trade": self.s.n_trade,
-            "count_negative": self.s.count_negative,
-        }
-        info["technical"] = dict_technical
+        self.s.update_dict_reward(reward)
+        # ====== テクニカル情報（分析用） ======
+        info["technical"] = self.s.get_technicals()
 
         return obs, reward, terminated, truncated, info
 

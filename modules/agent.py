@@ -9,7 +9,8 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from funcs.excel import get_excel_sheet
-from modules.env import TrainingEnv
+from modules.env_inference import InferenceEnv
+from modules.env_training import TrainingEnv
 from modules.agent_auxiliary import InfoCallback
 
 
@@ -61,7 +62,15 @@ class MyPPOAgent:
                 os.remove(self.path_normalize)
                 print(f"deleted {self.path_normalize}.")
 
-    def make_env(self):
+    def make_env_inference(self):
+        # 1. 環境クラス継承の推論用環境クラスのインスタンス
+        env_gym = InferenceEnv(self.code, self.df)
+        # 2. Monitor Wrapper
+        env_mon = Monitor(env_gym, self.dir_logs)
+
+        return env_mon
+
+    def make_env_training(self):
         # 1. Gymnasium 継承の環境クラスのインスタンス
         env_gym = TrainingEnv(self.code, self.df)
         # 2. Monitor Wrapper
@@ -82,7 +91,7 @@ class MyPPOAgent:
 
         # ====== 環境 ======
         # 3. DummyVecEnv Wrapper
-        env_dummy = DummyVecEnv([self.make_env])
+        env_dummy = DummyVecEnv([self.make_env_training])
 
         # 4. VecNormalize Wrapper
         if os.path.exists(self.path_normalize):
@@ -156,7 +165,7 @@ class MyPPOAgent:
 
         # ====== 学習後の推論用環境の準備 ======
         # 2. DummyVecEnv Wrapper
-        env_dummy = DummyVecEnv([self.make_env])
+        env_dummy = DummyVecEnv([self.make_env_inference])
 
         # 3. VecNormalize Wrapper
         if os.path.exists(self.path_normalize):
@@ -179,7 +188,7 @@ class MyPPOAgent:
             print(f"model is loaded from {self.path_model}.")
         else:
             print(f"{self.path_model} does not exist!")
-            return {},{}
+            return {}, {}
 
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0

@@ -17,7 +17,7 @@ class EnvData:
     # インジケータ系
     PERIOD_WARMUP: int = 300
     PERIOD_MA_1: int = 120
-    PERIOD_MA_2: int = 1200
+    PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
     LOSSCUT_1: float = -10.0
     # 報酬系

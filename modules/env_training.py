@@ -89,7 +89,7 @@ class TrainingEnv(gym.Env):
         colname1 = self.s.COL_CROSS_MA_GOLDEN
         colname2 = self.s.COL_CROSS_MA_DEAD
         n: int = len(self.df_tick)
-        w: int = 60
+        w: int = 120
         p: float = 2.0
         # クロス・ポイント
         diff_ma_pre: float | None = None
@@ -116,23 +116,25 @@ class TrainingEnv(gym.Env):
             v1 = self.df_tick.at[r, colname1]
             v2 = self.df_tick.at[r, colname2]
             if v1 == p:
-                for i in range(w):
-                    denom = ((i + 1) * 2) ** 2
-                    r_pre = r - i - 1
+                for i in range(1, w):
+                    denom = (i * 2) ** 2
+                    r_pre = r - i
                     if 0 <= r_pre:
                         self.df_tick.at[r_pre, colname1] += p / denom
-                    r_post = r + i + 1
+                    r_post = r + i
                     if r_post < n - 1:
-                        self.df_tick.at[r_post, colname1] += p / denom
+                        # クロスを超えたら急峻に
+                        self.df_tick.at[r_post, colname1] += p / denom / denom
             if v2 == p:
-                for i in range(w):
-                    denom = ((i + 1) * 2) ** 2
-                    r_pre = r - i - 1
+                for i in range(1, w):
+                    denom = (i * 2) ** 2
+                    r_pre = r - i
                     if 0 <= r_pre:
                         self.df_tick.at[r_pre, colname2] += p / denom
-                    r_post = r + i + 1
+                    r_post = r + i
                     if r_post < n - 1:
-                        self.df_tick.at[r_post, colname2] += p / denom
+                        # クロスを超えたら急峻に
+                        self.df_tick.at[r_post, colname2] += p / denom / denom
 
         # トレーニング用データの保存
         print("特徴量などを追加したデータを保存しました。")

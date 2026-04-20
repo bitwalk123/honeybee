@@ -43,10 +43,13 @@ if __name__ == "__main__":
     # 学習
     for i, file_excel in enumerate(list_excel):
         # 概ねのエピソード数
+        """
         if i > 1:
             n_episode = 50
         else:
             n_episode = 100
+        """
+        n_episode = 100
         agent.train(file_excel, n_episode)
 
     # 推論（確認用）

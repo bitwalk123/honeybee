@@ -22,6 +22,7 @@ class TrainingEnv(gym.Env):
 
         # データクラスのインスタンスを定義
         self.s = EnvData()
+        self.get_data_open()  # 始値の取得
 
         # ====== データフレームに必要な観測値を追加 ======
         self._prep_observations()
@@ -151,6 +152,10 @@ class TrainingEnv(gym.Env):
         """
         return self.s.get_masks()
 
+    def close(self) -> None:
+        # Cleanup resources (e.g., close windows)
+        pass
+
     def get_data(self) -> None:
         """
         ティックデータから一行抽出
@@ -161,11 +166,19 @@ class TrainingEnv(gym.Env):
         row = self.df_tick.iloc[self.s.row][list_name]
         self.s.set_data(row)
 
-    def get_reward_cross_ma_golden(self):
-        return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_GOLDEN]
+    def get_data_open(self) -> None:
+        """
+        始値情報の取得
+        """
+        list_name = ["Time", "Price", "Volume"]
+        row = self.df_tick.iloc[0][list_name]
+        self.s.set_data_open(row)
 
     def get_reward_cross_ma_dead(self):
         return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_DEAD]
+
+    def get_reward_cross_ma_golden(self):
+        return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_GOLDEN]
 
     """
     def get_obs(self):
@@ -191,6 +204,43 @@ class TrainingEnv(gym.Env):
         # ポジション・マネージャのリセットと初期化
         self.posman.reset()
         self.posman.initPosition([self.CODE])
+
+    def position_open(self, action_type: ActionType) -> float:
+        self.s.position = self.posman.openPosition(self.CODE, self.s.ts, self.s.price, action_type)
+        self.s.n_trade += 1  # 取引回数の更新
+        self.s.profit_pre = 0.0  # 一つ前の含み益
+        # 【報酬・ペナルティ】
+        r = 0.0
+        r -= self.s.COST_CONTRACT  # 約定コスト
+        return r
+
+    def position_close(self, note="") -> float:
+        """
+        ポジション・クローズ
+        :return:
+        """
+        # ポジション管理
+        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price, note=note)
+        self.s.n_trade += 1  # 取引回数の更新
+        self.s.profit_pre = 0.0  # 一つ前の含み益
+        # 【報酬】
+        r = 0.0
+        r -= self.s.COST_CONTRACT  # 約定コスト
+        r += self.s.profit  # 含み損益分そっくり報酬
+        self.s.reset_count_negative()
+        return r
+
+    def position_close_force(self) -> float:
+        """
+        ポジション・クローズ（強制）
+        :param profit:
+        :return:
+        """
+        return self.position_close(note="強制返済")
+
+    def render(self) -> None:
+        # Implement visualization logic based on self.render_mode
+        pass
 
     def reset(self, seed=None, options=None):
         """
@@ -299,7 +349,6 @@ class TrainingEnv(gym.Env):
                 _ = self.position_close_force()
         """
 
-
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)
         truncated = False  # Time limit reached
@@ -336,44 +385,3 @@ class TrainingEnv(gym.Env):
         info["technical"] = self.s.get_technicals()
 
         return obs, reward, terminated, truncated, info
-
-    def position_open(self, action_type: ActionType) -> float:
-        self.s.position = self.posman.openPosition(self.CODE, self.s.ts, self.s.price, action_type)
-        self.s.n_trade += 1  # 取引回数の更新
-        self.s.profit_pre = 0.0  # 一つ前の含み益
-        # 【報酬・ペナルティ】
-        r = 0.0
-        r -= self.s.COST_CONTRACT  # 約定コスト
-        return r
-
-    def position_close(self, note="") -> float:
-        """
-        ポジション・クローズ
-        :return:
-        """
-        # ポジション管理
-        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price, note=note)
-        self.s.n_trade += 1  # 取引回数の更新
-        self.s.profit_pre = 0.0  # 一つ前の含み益
-        # 【報酬】
-        r = 0.0
-        r -= self.s.COST_CONTRACT  # 約定コスト
-        r += self.s.profit  # 含み損益分そっくり報酬
-        self.s.reset_count_negative()
-        return r
-
-    def position_close_force(self) -> float:
-        """
-        ポジション・クローズ（強制）
-        :param profit:
-        :return:
-        """
-        return self.position_close(note="強制返済")
-
-    def render(self) -> None:
-        # Implement visualization logic based on self.render_mode
-        pass
-
-    def close(self) -> None:
-        # Cleanup resources (e.g., close windows)
-        pass

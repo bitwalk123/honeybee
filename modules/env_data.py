@@ -50,6 +50,7 @@ class EnvData:
 
     ts_open: float = 0.0
     price_open: float = 0.0
+    volume_open: float = 0.0
     # diff_ma_pre: float = 0.0
     # diff_vwap_pre: float = 0.0
     profit_pre: float = 0.0  # 一つ前の含み損益
@@ -93,12 +94,22 @@ class EnvData:
             raise TypeError(f"Unknown PositionType: {self.position}")
 
     def get_obs(self) -> dict:
+        """
+        観測空間の算出
+        :return:
+        """
+        """
+        データの「標準化」の観点では、始値で差分を取ることに意味はない。
+        しかし、環境ラッパー VecNormalize で保持しているスケーラに対して、
+        日毎に生じる絶対値のズレを少しでも抑えたい。
+        そのため、株価に関連する特徴量に対して、始値で差分を取っている。
+        """
         market = np.array(
             [
-                self.price,
-                self.ma1,
-                self.ma2,
-                self.vwap,
+                self.price - self.price_open,
+                self.ma1 - self.price_open,
+                self.ma2 - self.price_open,
+                self.vwap - self.price_open,
                 self.profit,
             ],
             dtype=np.float32
@@ -183,6 +194,11 @@ class EnvData:
         self.diff_ma = row["DiffMA"]
         self.vwap = row["VWAP"]
         self.diff_vwap = row["DiffVWAP"]
+
+    def set_data_open(self, row):
+        self.ts_open = row["Time"]
+        self.price_open = row["Price"]
+        self.volume_open = row["Volume"]
 
     def update_count_negative(self):
         if self.profit < 0:

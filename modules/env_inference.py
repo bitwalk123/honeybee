@@ -27,23 +27,18 @@ class InferenceEnv(TrainingEnv):
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 _ = self.position_open(action_type)
-
             elif self.s.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 _ = self.position_close()
-
             else:
                 raise RuntimeError("Trade rule violation!")
-
         elif action_type == ActionType.SELL:
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 _ = self.position_open(action_type)
-
             elif self.s.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 _ = self.position_close()
-
             else:
                 raise RuntimeError("Trade rule violation!")
 
@@ -54,7 +49,16 @@ class InferenceEnv(TrainingEnv):
 
         # ====== 連続含み損評価 ======
         self.s.update_count_negative()
-        # self.s.update_flag_losscut_consecutive()
+        """
+        if self.s.flag_losscut_consecutive:
+            # 【推論ではロスカット】
+            if self.posman.hasPosition(self.CODE):
+                _ = self.position_close_force()
+        if self.s.is_losscut():
+            # 【推論ではロスカット】
+            if self.posman.hasPosition(self.CODE):
+                _ = self.position_close_force()
+        """
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)

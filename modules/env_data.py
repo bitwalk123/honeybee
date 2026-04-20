@@ -19,6 +19,7 @@ class EnvData:
     PERIOD_MA_1: int = 60
     PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
+    LOSSCUT_1: float = -10.0
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
@@ -166,6 +167,9 @@ class EnvData:
 
     def inc_row(self):
         self.row += 1
+
+    def is_losscut(self) -> bool:
+        return self.profit < self.LOSSCUT_1
 
     def reset_count_negative(self):
         self.count_negative = 0

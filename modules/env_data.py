@@ -105,10 +105,7 @@ class EnvData:
         if self.price_open > 0:
             market = np.array(
                 [
-                    self.price / self.price_open,
                     self.ma1 / self.price_open,
-                    self.ma2 / self.price_open,
-                    self.vwap / self.price_open,
                     self.profit,
                 ],
                 dtype=np.float32
@@ -116,9 +113,6 @@ class EnvData:
         else:
             market = np.array(
                 [
-                    1.0,
-                    1.0,
-                    1.0,
                     1.0,
                     self.profit,
                 ],

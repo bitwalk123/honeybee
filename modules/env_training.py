@@ -41,11 +41,8 @@ class TrainingEnv(gym.Env):
         """
         【観測値】- VecNormalize Wrapper を使用する前提
         [market] - VecNormalize Wrapper で標準化
-        1. Price（株価）
-        2. MA1（短周期移動平均）
-        3. MA2（長周期移動平均）
-        4. VWAP（VWAP）
-        5. Profit（含み損益）
+        1. MA1（短周期移動平均）
+        2. Profit（含み損益）
         [cross] - 符号が重要であるため標準化しない
         1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
         2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
@@ -58,7 +55,7 @@ class TrainingEnv(gym.Env):
         3. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(5,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
             "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
             "counter": spaces.Box(low=0, high=np.inf, shape=(2,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
@@ -180,11 +177,6 @@ class TrainingEnv(gym.Env):
     def get_reward_cross_ma_golden(self):
         return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_GOLDEN]
 
-    """
-    def get_obs(self):
-        return self.obs
-    """
-
     def get_transaction_result(self) -> pd.DataFrame:
         """
         取引結果
@@ -206,7 +198,9 @@ class TrainingEnv(gym.Env):
         self.posman.initPosition([self.CODE])
 
     def position_open(self, action_type: ActionType) -> float:
-        self.s.position = self.posman.openPosition(self.CODE, self.s.ts, self.s.price, action_type)
+        self.s.position = self.posman.openPosition(
+            self.CODE, self.s.ts, self.s.price, action_type
+        )
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬・ペナルティ】
@@ -220,7 +214,9 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # ポジション管理
-        self.s.position = self.posman.closePosition(self.CODE, self.s.ts, self.s.price, note=note)
+        self.s.position = self.posman.closePosition(
+            self.CODE, self.s.ts, self.s.price, note=note
+        )
         self.s.n_trade += 1  # 取引回数の更新
         self.s.profit_pre = 0.0  # 一つ前の含み益
         # 【報酬】
@@ -259,9 +255,6 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                1.0,
-                1.0,
-                1.0,
                 1.0,
                 0.0,
             ],

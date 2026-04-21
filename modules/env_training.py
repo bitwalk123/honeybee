@@ -293,28 +293,22 @@ class TrainingEnv(gym.Env):
                 reward += self.position_open(action_type)
                 # ゴールデン・クロス時のエントリ報酬
                 reward += reward_cross_ma_golden
-
             elif self.s.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 reward += self.position_close()
-
             else:
                 raise RuntimeError("Trade rule violation!")
-
         elif action_type == ActionType.SELL:
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 reward += self.position_open(action_type)
                 # デッド・クロス時のエントリ報酬
                 reward += reward_cross_ma_dead
-
             elif self.s.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 reward += self.position_close()
-
             else:
                 raise RuntimeError("Trade rule violation!")
-
         elif action_type == ActionType.HOLD:
             if self.s.position == PositionType.NONE:
                 # クロス・シグナルに応じた僅かなペナルティ

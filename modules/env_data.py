@@ -16,14 +16,14 @@ class EnvData:
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 300
-    PERIOD_MA_1: int = 120
+    PERIOD_MA_1: int = 90
     PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
     LOSSCUT_1: float = -10.0
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
-    RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
-    RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
+    RATIO_PROFIT_HOLD: float = 0.1  # HOLD（建玉あり）時の含み損益からの報酬比率
+    RATIO_PROFIT_CHANGE_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
 
@@ -158,6 +158,14 @@ class EnvData:
         """
         return pd.DataFrame(self.dict_reward)
 
+    def get_reward_unrealized_profit(self) -> float:
+        r = 0
+        # 含み益があれば幾分かを報酬に
+        r += self.profit * self.RATIO_PROFIT_HOLD
+        # 含み益の増減に応じて幾分かを報酬に
+        r += (self.profit - self.profit_pre) * self.RATIO_PROFIT_CHANGE_HOLD
+        return r
+
     def get_technicals(self):
         return {
             "ts": self.ts,
@@ -171,15 +179,6 @@ class EnvData:
             "n_trade": self.n_trade,
             "count_negative": self.count_negative,
         }
-
-    def get_reward_unrealized_profit(self) -> float:
-        r = 0
-        # 含み益があれば幾分かを報酬に
-        r += self.profit * self.RATIO_PROFIT_HOLD
-        # 含み益の増減に応じて幾分かを報酬に
-        r += (self.profit - self.profit_pre) * self.RATIO_PROFIT_CHANGE_HOLD
-
-        return r
 
     def inc_row(self):
         self.row += 1

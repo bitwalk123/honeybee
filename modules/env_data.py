@@ -99,21 +99,32 @@ class EnvData:
         :return:
         """
         """
-        データの「標準化」の観点では、始値で差分を取ることに意味はない。
-        しかし、環境ラッパー VecNormalize で保持しているスケーラに対して、
         日毎に生じる絶対値のズレを少しでも抑えたい。
-        そのため、株価に関連する特徴量に対して、始値で差分を取っている。
+        そのため、株価に関連する特徴量に対して、始値で割っている。
         """
-        market = np.array(
-            [
-                self.price - self.price_open,
-                self.ma1 - self.price_open,
-                self.ma2 - self.price_open,
-                self.vwap - self.price_open,
-                self.profit,
-            ],
-            dtype=np.float32
-        )
+        if self.price_open > 0:
+            market = np.array(
+                [
+                    self.price / self.price_open,
+                    self.ma1 / self.price_open,
+                    self.ma2 / self.price_open,
+                    self.vwap / self.price_open,
+                    self.profit,
+                ],
+                dtype=np.float32
+            )
+        else:
+            market = np.array(
+                [
+                    1.0,
+                    1.0,
+                    1.0,
+                    1.0,
+                    self.profit,
+                ],
+                dtype=np.float32
+            )
+
         cross = np.array(
             [
                 self.diff_ma,

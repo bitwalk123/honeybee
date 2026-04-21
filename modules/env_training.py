@@ -91,14 +91,14 @@ class TrainingEnv(gym.Env):
         colname2 = self.s.COL_CROSS_MA_DEAD
         n: int = len(self.df_tick)
         w: int = 120
-        p: float = 2.0
+        p: float = 3.0
         # クロス・ポイント
         diff_ma_pre: float | None = None
         for r in range(n):
             diff_ma = self.df_tick.at[r, "DiffMA"]
             if diff_ma_pre is None:
                 self.df_tick.at[r, colname1] = 0.0
-            elif diff_ma_pre <= 0 < diff_ma:
+            elif diff_ma_pre < 0 <= diff_ma:
                 self.df_tick.at[r, colname1] = p
             else:
                 self.df_tick.at[r, colname1] = 0.0
@@ -259,10 +259,10 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                1.0,
+                1.0,
+                1.0,
+                1.0,
                 0.0,
             ],
             dtype=np.float32

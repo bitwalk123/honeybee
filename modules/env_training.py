@@ -88,7 +88,7 @@ class TrainingEnv(gym.Env):
         colname2 = self.s.COL_CROSS_MA_DEAD
         n: int = len(self.df_tick)
         w: int = 120
-        p: float = 3.0
+        p: float = 5.0
         # クロス・ポイント
         diff_ma_pre: float | None = None
         for r in range(n):

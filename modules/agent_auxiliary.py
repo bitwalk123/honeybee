@@ -1,5 +1,3 @@
-import os
-
 import pandas as pd
 from stable_baselines3.common.callbacks import BaseCallback
 

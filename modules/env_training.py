@@ -135,8 +135,8 @@ class TrainingEnv(gym.Env):
                         self.df_tick.at[r_post, colname2] += p / denom / denom
 
         # トレーニング用データの保存
-        print("特徴量などを追加したデータを保存しました。")
-        self.df_tick.to_csv("traning_data.csv")
+        # print("特徴量などを追加したデータを保存しました。")
+        # self.df_tick.to_csv("traning_data.csv")
 
     def action_masks(self) -> np.ndarray:
         """

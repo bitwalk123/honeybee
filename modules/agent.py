@@ -1,4 +1,5 @@
 import os.path
+import random
 import shutil
 from collections import defaultdict
 
@@ -83,6 +84,12 @@ class MyPPOAgent:
         学習（訓練）
         :return:
         """
+        # 1 本の長いファイル・リストをシャッフル
+        random.shuffle(list_excel)
+        print("学習対象ファイル")
+        for file_excel in list_excel:
+            print(file_excel)
+
         model = None
         env_train = None
         for n_episode, file_excel in enumerate(list_excel):

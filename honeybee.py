@@ -51,15 +51,8 @@ if __name__ == "__main__":
     """
 
     # 学習
-    for i, file_excel in enumerate(list_excel):
-        # 概ねのエピソード数
-        """
-        if i > 1:
-            n_episode = 50
-        else:
-            n_episode = 100
-        """
-        agent.train(file_excel)
+    agent.train(list_excel)
+
 
     # 推論（確認用）
     #file_excel = list_excel[-1]

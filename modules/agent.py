@@ -78,86 +78,125 @@ class MyPPOAgent:
 
         return env_mon
 
-    def train(self, file_excel: str):
+    def train(self, list_excel: list):
         """
         学習（訓練）
         :return:
         """
-        # 指定銘柄コードのティックデータのデータフレームを取得
-        self.df = get_excel_sheet(file_excel, self.code)
-        #unit_episode = len(self.df)
-        # 学習用ステップ数の設定
-        timesteps = len(self.df)
+        model = None
+        env_train = None
+        for file_excel in list_excel:
+            # 指定銘柄コードのティックデータのデータフレームを取得
+            self.df = get_excel_sheet(file_excel, self.code)
+            #unit_episode = len(self.df)
+            # 学習用ステップ数の設定
+            timesteps = len(self.df)
 
-        # ====== 環境 ======
-        # 3. DummyVecEnv Wrapper
-        env_dummy = DummyVecEnv([self.make_env_training])
+            # ====== 環境 ======
+            # 3. DummyVecEnv Wrapper
+            env_dummy = DummyVecEnv([self.make_env_training])
 
-        # 4. VecNormalize Wrapper
-        if os.path.exists(self.path_normalize):
-            env_train = VecNormalize.load(
-                self.path_normalize,
-                env_dummy,
-            )
-        else:
-            env_train = VecNormalize(
-                env_dummy,
-                norm_obs=True,
-                norm_reward=True,
-                norm_obs_keys=["market", "counter"]
-            )
+            # 4. VecNormalize Wrapper
+            """
+            if os.path.exists(self.path_normalize):
+                env_train = VecNormalize.load(
+                    self.path_normalize,
+                    env_dummy,
+                )
+            else:
+                env_train = VecNormalize(
+                    env_dummy,
+                    norm_obs=True,
+                    norm_reward=True,
+                    norm_obs_keys=["market", "counter"]
+                )
+            """
+            if env_train is None:
+                if os.path.exists(self.path_normalize):
+                    env_train = VecNormalize.load(self.path_normalize, env_dummy)
+                    env_train.training = True
+                    env_train.norm_reward = True
+                    env_train.norm_obs = True
+                else:
+                    env_train = VecNormalize(
+                        env_dummy,
+                        norm_obs=True,
+                        norm_reward=True,
+                        norm_obs_keys=["market", "counter"]
+                    )
+            else:
+                # 2 回目以降は環境だけ差し替える
+                env_train.set_venv(env_dummy)
 
-        if os.path.exists(self.path_model):
-            # ====== モデル・ロード ======
-            model = MaskablePPO.load(
-                self.path_model,
-                env=env_train,
-                verbose=1,
-                tensorboard_log=self.tb_logs,
-            )
-            print(f"model is loaded from {self.path_model}.")
-        else:
-            # ====== モデル生成 ======
-            model = MaskablePPO(
-                "MultiInputPolicy",
-                env=env_train,
-                verbose=1,
-                tensorboard_log=self.tb_logs,
-            )
-            print(f"new model is created.")
+            """
+            if os.path.exists(self.path_model):
+                # ====== モデル・ロード ======
+                model = MaskablePPO.load(
+                    self.path_model,
+                    env=env_train,
+                    verbose=1,
+                    tensorboard_log=self.tb_logs,
+                )
+                print(f"model is loaded from {self.path_model}.")
+            else:
+                # ====== モデル生成 ======
+                model = MaskablePPO(
+                    "MultiInputPolicy",
+                    env=env_train,
+                    verbose=1,
+                    tensorboard_log=self.tb_logs,
+                )
+                print(f"new model is created.")
+            """
+            if model is None:
+                # ====== モデル生成 ======
+                model = MaskablePPO(
+                    "MultiInputPolicy",
+                    env=env_train,
+                    verbose=1,
+                    tensorboard_log=self.tb_logs,
+                )
+                print(f"new model is created.")
+            else:
+                # ====== 環境を更新 ======
+                model.set_env(env_train)
 
-        # ====== 学習実施 ======
-        print("Begin training...")
-        callback = InfoCallback(dir_logs=self.dir_logs)
-        try:
-            model.learn(
-                total_timesteps=timesteps,
-                callback=callback,
-            )
-        except ValueError as e:
-            import traceback
-            traceback.print_exc()
-            print("learn failed:", e)
 
-            # model から VecEnv を取得（VecNormalize / DummyVecEnv が返る）
-            venv = model.get_env()
-
-            # 1) VecEnv 経由で安全に呼ぶ（推奨）
-            # indices=0 で 0 番目の環境だけ呼ぶ
+            # ====== 学習実施 ======
+            print("Begin training...")
+            callback = InfoCallback(dir_logs=self.dir_logs)
             try:
-                obs_list = venv.env_method('get_obs', indices=0)
-                print("env_method get_obs:", obs_list)
-            except Exception as ex:
-                print("env_method failed:", ex)
+                model.learn(
+                    total_timesteps=timesteps,
+                    callback=callback,
+                    reset_num_timesteps=False,
+                    progress_bar=False,
+                )
+            except ValueError as e:
+                import traceback
+                traceback.print_exc()
+                print("learn failed:", e)
+
+                # model から VecEnv を取得（VecNormalize / DummyVecEnv が返る）
+                venv = model.get_env()
+
+                # 1) VecEnv 経由で安全に呼ぶ（推奨）
+                # indices=0 で 0 番目の環境だけ呼ぶ
+                try:
+                    obs_list = venv.env_method('get_obs', indices=0)
+                    print("env_method get_obs:", obs_list)
+                except Exception as ex:
+                    print("env_method failed:", ex)
+
+        # VecNormalize の内部状態を保存
+        env_train.save(self.path_normalize)
+        # print(f"VecNormalize is saved to {self.path_normalize}.")
 
         # モデルの保存
         model.save(self.path_model)
         print(f"model is saved to {self.path_model}.")
-        # 推論時に利用できるように VecNormalize の内部状態を保存
-        env_train.save(self.path_normalize)
-        print(f"VecNormalize is saved to {self.path_normalize}.")
 
-        env_train.close()
+        #env_train.close()
 
     def infer(self, file_excel: str) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得

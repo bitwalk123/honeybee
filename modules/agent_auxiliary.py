@@ -21,7 +21,7 @@ class InfoCallback(BaseCallback):
                 # 売買履歴
                 df_transaction: pd.DataFrame = info["transaction"]
                 # 損益
-                pnl = df_transaction['損益'].sum()
+                pnl = df_transaction["損益"].sum()
                 # 約定回数
                 n_transaction = len(df_transaction)
                 # 標準出力
@@ -31,6 +31,8 @@ class InfoCallback(BaseCallback):
                     f"モデル報酬 : {episode_reward},\n"
                     f"損益 : {pnl} 円, 約定係数 : {n_transaction} 回"
                 )
+
+                """
                 # 売買履歴のデータフレームを CSV 形式で保存
                 path_csv_transaction = os.path.join(
                     self.dir_logs,
@@ -46,6 +48,7 @@ class InfoCallback(BaseCallback):
                     f"reward_{self.n_episode:06d}.csv"
                 )
                 df_reward.to_csv(path_csv_reward, index=False)
+                """
 
                 self.n_episode += 1
 

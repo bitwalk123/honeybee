@@ -88,7 +88,7 @@ class MyPPOAgent:
         for file_excel in list_excel:
             # 指定銘柄コードのティックデータのデータフレームを取得
             self.df = get_excel_sheet(file_excel, self.code)
-            #unit_episode = len(self.df)
+            # unit_episode = len(self.df)
             # 学習用ステップ数の設定
             timesteps = len(self.df)
 
@@ -126,7 +126,20 @@ class MyPPOAgent:
                     )
             else:
                 # 2 回目以降は環境だけ差し替える
-                env_train.set_venv(env_dummy)
+                # env_train.set_venv(env_dummy)
+                # 2回目以降：新しい VecNormalize を作り直す
+                new_env = VecNormalize(
+                    env_dummy,
+                    norm_obs=True,
+                    norm_reward=True,
+                    norm_obs_keys=["market", "counter"]
+                )
+                new_env.obs_rms = env_train.obs_rms
+                new_env.ret_rms = env_train.ret_rms
+                new_env.clip_obs = env_train.clip_obs
+                new_env.clip_reward = env_train.clip_reward
+                new_env.training = True
+                env_train = new_env
 
             """
             if os.path.exists(self.path_model):
@@ -160,7 +173,6 @@ class MyPPOAgent:
             else:
                 # ====== 環境を更新 ======
                 model.set_env(env_train)
-
 
             # ====== 学習実施 ======
             print("Begin training...")
@@ -196,7 +208,7 @@ class MyPPOAgent:
         model.save(self.path_model)
         print(f"model is saved to {self.path_model}.")
 
-        #env_train.close()
+        # env_train.close()
 
     def infer(self, file_excel: str) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得

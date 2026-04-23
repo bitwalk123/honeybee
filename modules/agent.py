@@ -89,6 +89,7 @@ class MyPPOAgent:
         print("学習対象ファイル")
         for file_excel in list_excel:
             print(file_excel)
+        print(f"{len(list_excel)} files")
 
         model = None
         env_train = None

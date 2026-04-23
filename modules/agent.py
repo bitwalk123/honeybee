@@ -78,16 +78,16 @@ class MyPPOAgent:
 
         return env_mon
 
-    def train(self, file_excel: str, n_episode: int = 3):
+    def train(self, file_excel: str):
         """
         学習（訓練）
         :return:
         """
         # 指定銘柄コードのティックデータのデータフレームを取得
         self.df = get_excel_sheet(file_excel, self.code)
-        unit_episode = len(self.df)
+        #unit_episode = len(self.df)
         # 学習用ステップ数の設定
-        timesteps = unit_episode * n_episode
+        timesteps = len(self.df)
 
         # ====== 環境 ======
         # 3. DummyVecEnv Wrapper

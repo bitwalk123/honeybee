@@ -1,5 +1,6 @@
 import glob
 import os
+import random
 import sys
 
 from modules.agent import MyPPOAgent
@@ -22,7 +23,16 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel_all = sorted(glob.glob(path_excel))
-    list_excel = list_excel_all[-20:]
+    #list_excel = list_excel_all
+
+    # 1 日あたり 5 エピソード
+    episodes_per_day = 5
+
+    # ティックデータ数 × episodes_per_day エピソード分のリストを作る
+    list_excel = list_excel_all * episodes_per_day
+
+    # 1 本の長いリストをシャッフル
+    random.shuffle(list_excel)
 
     # 学習に渡す Excel リストが確かにリストになっているか確認
     if type(list_excel) is not list:
@@ -49,9 +59,8 @@ if __name__ == "__main__":
         else:
             n_episode = 100
         """
-        n_episode = 100
-        agent.train(file_excel, n_episode)
+        agent.train(file_excel)
 
     # 推論（確認用）
-    file_excel = list_excel[-1]
-    agent.infer(file_excel)
+    #file_excel = list_excel[-1]
+    #agent.infer(file_excel)

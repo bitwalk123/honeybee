@@ -291,8 +291,10 @@ class TrainingEnv(gym.Env):
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 reward += self.position_open(action_type)
-                # ゴールデン・クロス時のエントリ報酬
+                # ゴールデン・クロス時のエントリに対する報酬
                 reward += reward_cross_ma_golden
+                # デッド・クロス時のエントリに対するペナルティ
+                reward -= reward_cross_ma_dead
             elif self.s.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 reward += self.position_close()
@@ -302,7 +304,9 @@ class TrainingEnv(gym.Env):
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 reward += self.position_open(action_type)
-                # デッド・クロス時のエントリ報酬
+                # ゴールデン・クロス時のエントリに対するペナルティ
+                reward -= reward_cross_ma_golden
+                # デッド・クロス時のエントリに対する報酬
                 reward += reward_cross_ma_dead
             elif self.s.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済

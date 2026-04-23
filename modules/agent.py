@@ -104,20 +104,6 @@ class MyPPOAgent:
             env_dummy = DummyVecEnv([self.make_env_training])
 
             # 4. VecNormalize Wrapper
-            """
-            if os.path.exists(self.path_normalize):
-                env_train = VecNormalize.load(
-                    self.path_normalize,
-                    env_dummy,
-                )
-            else:
-                env_train = VecNormalize(
-                    env_dummy,
-                    norm_obs=True,
-                    norm_reward=True,
-                    norm_obs_keys=["market", "counter"]
-                )
-            """
             if env_train is None:
                 if os.path.exists(self.path_normalize):
                     env_train = VecNormalize.load(self.path_normalize, env_dummy)
@@ -148,26 +134,6 @@ class MyPPOAgent:
                 new_env.training = True
                 env_train = new_env
 
-            """
-            if os.path.exists(self.path_model):
-                # ====== モデル・ロード ======
-                model = MaskablePPO.load(
-                    self.path_model,
-                    env=env_train,
-                    verbose=1,
-                    tensorboard_log=self.tb_logs,
-                )
-                print(f"model is loaded from {self.path_model}.")
-            else:
-                # ====== モデル生成 ======
-                model = MaskablePPO(
-                    "MultiInputPolicy",
-                    env=env_train,
-                    verbose=1,
-                    tensorboard_log=self.tb_logs,
-                )
-                print(f"new model is created.")
-            """
             if model is None:
                 # ====== モデル生成 ======
                 model = MaskablePPO(

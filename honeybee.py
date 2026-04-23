@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # list_excel = list_excel_all
 
     # 1 日あたりのエピソード
-    episodes_per_day = 20
+    episodes_per_day = 5
 
     # ティックデータ数 × episodes_per_day エピソード分のリストを作る
     list_excel = list_excel_all * episodes_per_day

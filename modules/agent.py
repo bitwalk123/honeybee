@@ -85,7 +85,7 @@ class MyPPOAgent:
         """
         model = None
         env_train = None
-        for file_excel in list_excel:
+        for n_episode, file_excel in enumerate(list_excel):
             # 指定銘柄コードのティックデータのデータフレームを取得
             self.df = get_excel_sheet(file_excel, self.code)
             # unit_episode = len(self.df)
@@ -175,7 +175,7 @@ class MyPPOAgent:
                 model.set_env(env_train)
 
             # ====== 学習実施 ======
-            print("Begin training...")
+            print(f"Training in episode {n_episode}")
             callback = InfoCallback(dir_logs=self.dir_logs)
             try:
                 model.learn(

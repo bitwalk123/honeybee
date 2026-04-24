@@ -287,7 +287,11 @@ class TrainingEnv(gym.Env):
         # 情報用辞書
         info = {}
 
+        # === 連続含み損評価 ===
         self.s.update_count_negative()
+        reward += self.s.get_penalty_negative()
+        """
+        強制的な利確・ロスカットすると学習に影響するようだ
         flag_not_action_yet = True  # ポジション変更のアクション済か確認用フラグ
         # 1. 利確判定
         if self.s.does_take_profit():
@@ -312,50 +316,51 @@ class TrainingEnv(gym.Env):
         if flag_not_action_yet and self.s.is_losscut():
             reward += self.position_close_force(note="単純ロスカット")
             flag_not_action_yet = False
+        """
 
-        if flag_not_action_yet:
-            # ====== 建玉管理 ======
-            action_type = ActionType(action)
-            reward_cross_ma_golden = self.get_reward_cross_ma_golden()
-            reward_cross_ma_dead = self.get_reward_cross_ma_dead()
-            if action_type == ActionType.BUY:
-                if self.s.position == PositionType.NONE:
-                    # 【買建】建玉がなければ買建
-                    reward += self.position_open(action_type)
-                    # ゴールデン・クロス時のエントリに対する報酬
-                    reward += reward_cross_ma_golden
-                    # デッド・クロス時のエントリに対するペナルティ
-                    reward -= reward_cross_ma_dead
-                elif self.s.position == PositionType.SHORT:
-                    # 【返済】売建（ショート）であれば（買って）返済
-                    reward += self.position_close()
-                else:
-                    raise RuntimeError("Trade rule violation!")
-            elif action_type == ActionType.SELL:
-                if self.s.position == PositionType.NONE:
-                    # 【売建】建玉がなければ売建
-                    reward += self.position_open(action_type)
-                    # ゴールデン・クロス時のエントリに対するペナルティ
-                    reward -= reward_cross_ma_golden
-                    # デッド・クロス時のエントリに対する報酬
-                    reward += reward_cross_ma_dead
-                elif self.s.position == PositionType.LONG:
-                    # 【返済】買建（ロング）であれば（売って）返済
-                    reward += self.position_close()
-                else:
-                    raise RuntimeError("Trade rule violation!")
-            elif action_type == ActionType.HOLD:
-                if self.s.position == PositionType.NONE:
-                    # クロス・シグナルに応じた僅かなペナルティ
-                    reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
-                    denom = 1000.0
-                    reward -= reward_sum / denom
-                else:
-                    # 【報酬・ペナルティ】
-                    # 含み益があれば幾分かを報酬に
-                    reward += self.s.get_reward_unrealized_profit()
+        #if flag_not_action_yet:
+        # ====== 建玉管理 ======
+        action_type = ActionType(action)
+        reward_cross_ma_golden = self.get_reward_cross_ma_golden()
+        reward_cross_ma_dead = self.get_reward_cross_ma_dead()
+        if action_type == ActionType.BUY:
+            if self.s.position == PositionType.NONE:
+                # 【買建】建玉がなければ買建
+                reward += self.position_open(action_type)
+                # ゴールデン・クロス時のエントリに対する報酬
+                reward += reward_cross_ma_golden
+                # デッド・クロス時のエントリに対するペナルティ
+                reward -= reward_cross_ma_dead
+            elif self.s.position == PositionType.SHORT:
+                # 【返済】売建（ショート）であれば（買って）返済
+                reward += self.position_close()
             else:
-                raise TypeError(f"Unknown ActionType: {action_type}!")
+                raise RuntimeError("Trade rule violation!")
+        elif action_type == ActionType.SELL:
+            if self.s.position == PositionType.NONE:
+                # 【売建】建玉がなければ売建
+                reward += self.position_open(action_type)
+                # ゴールデン・クロス時のエントリに対するペナルティ
+                reward -= reward_cross_ma_golden
+                # デッド・クロス時のエントリに対する報酬
+                reward += reward_cross_ma_dead
+            elif self.s.position == PositionType.LONG:
+                # 【返済】買建（ロング）であれば（売って）返済
+                reward += self.position_close()
+            else:
+                raise RuntimeError("Trade rule violation!")
+        elif action_type == ActionType.HOLD:
+            if self.s.position == PositionType.NONE:
+                # クロス・シグナルに応じた僅かなペナルティ
+                reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
+                denom = 1000.0
+                reward -= reward_sum / denom
+            else:
+                # 【報酬・ペナルティ】
+                # 含み益があれば幾分かを報酬に
+                reward += self.s.get_reward_unrealized_profit()
+        else:
+            raise TypeError(f"Unknown ActionType: {action_type}!")
 
 
         # ====== エピソード終了判定 ======

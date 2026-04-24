@@ -218,7 +218,8 @@ class TrainingEnv(gym.Env):
             self.CODE, self.s.ts, self.s.price, note=note
         )
         self.s.n_trade += 1  # 取引回数の更新
-        self.s.profit_pre = 0.0  # 一つ前の含み益
+        self.s.reset_profit_pre()  # 一つ前の含み益のリセット
+        self.s.reset_profit_max()  # 最大含み益のリセット
         # 【報酬】
         r = 0.0
         r -= self.s.COST_CONTRACT  # 約定コスト
@@ -226,13 +227,13 @@ class TrainingEnv(gym.Env):
         self.s.reset_count_negative()
         return r
 
-    def position_close_force(self) -> float:
+    def position_close_force(self, note="強制返済") -> float:
         """
         ポジション・クローズ（強制）
         :param profit:
         :return:
         """
-        return self.position_close(note="強制返済")
+        return self.position_close(note)
 
     def render(self) -> None:
         # Implement visualization logic based on self.render_mode

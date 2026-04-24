@@ -19,7 +19,9 @@ class EnvData:
     PERIOD_MA_1: int = 90
     PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
-    LOSSCUT_1: float = -10.0
+    LOSSCUT_1: float = -50.0
+    DD_RATIO: float = 0.5
+    DD_THRESHOLD: float = 10.0
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.025  # HOLD（建玉あり）時の含み損益からの報酬比率
@@ -47,6 +49,7 @@ class EnvData:
     vwap: float = 0.0
     diff_vwap: float = 0.0
     profit: float = 0.0  # 含み損益
+    profit_max: float = 0.0  # 最大含み損益
 
     ts_open: float = 0.0
     price_open: float = 0.0
@@ -75,6 +78,12 @@ class EnvData:
         # SHORT
         PositionType.SHORT: MASK_SHORT,
     }
+
+    def does_take_profit(self) -> bool:
+        if self.DD_THRESHOLD < self.profit and self.DD_RATIO < self.update_profit_max():
+            return True
+        else:
+            return False
 
     def get_masks(self):
         """
@@ -190,6 +199,12 @@ class EnvData:
         self.count_negative = 0
         self.flag_losscut_consecutive = False
 
+    def reset_profit_pre(self):
+        self.profit_pre = 0.0
+
+    def reset_profit_max(self):
+        self.profit_max = 0.0
+
     def set_data(self, row):
         self.ts = row["Time"]
         self.price = row["Price"]
@@ -226,6 +241,19 @@ class EnvData:
     def update_dict_reward(self, reward) -> None:
         self.dict_reward["ts"].append(self.ts)
         self.dict_reward["reward"].append(reward)
+
+    def update_profit_max(self) -> float:
+        if 0 <= self.profit:
+            if self.profit_max < self.profit:
+                self.profit_max = self.profit
+                return 0.0
+            elif 0 < self.profit_max:
+                # Drawdown Ration
+                return (self.profit_max - self.profit) / self.profit_max
+            else:
+                return 0.0
+        else:
+            return 0.0
 
     def update_profit_pre(self):
         self.profit_pre = self.profit  # 一つ前の含み益の更新

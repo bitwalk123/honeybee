@@ -305,12 +305,12 @@ class TrainingEnv(gym.Env):
 
         # 3. 含み益→含み損ロスカット判定
         if flag_not_action_yet and 5 < self.s.profit_max and self.s.profit < -10:
-            self.position_close_force(note="益→損ロスカット")
+            reward += self.position_close_force(note="益→損ロスカット")
             flag_not_action_yet = False
 
         # 4. 単純ロスカット判定
         if flag_not_action_yet and self.s.is_losscut():
-            self.position_close_force(note="単純ロスカット")
+            reward += self.position_close_force(note="単純ロスカット")
             flag_not_action_yet = False
 
         if flag_not_action_yet:

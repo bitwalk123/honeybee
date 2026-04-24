@@ -31,7 +31,12 @@ class InferenceEnv(TrainingEnv):
             self.position_close_force(note="連続含み損")
             return True
 
-        # 3. 単純ロスカット判定
+        # 3. 含み益→含み損ロスカット判定
+        if 5 < self.s.profit_max and self.s.profit < -10:
+            self.position_close_force(note="益→損ロスカット")
+            return True
+
+        # 4. 単純ロスカット判定
         if self.s.is_losscut():
             self.position_close_force(note="単純ロスカット")
             return True

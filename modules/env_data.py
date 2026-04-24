@@ -19,7 +19,7 @@ class EnvData:
     PERIOD_MA_1: int = 90
     PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
-    LOSSCUT_1: float = -50.0
+    LOSSCUT_1: float = -25.0
     DD_RATIO: float = 0.5
     DD_THRESHOLD: float = 10.0
     # 報酬系

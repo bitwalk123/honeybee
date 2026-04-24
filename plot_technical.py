@@ -27,7 +27,6 @@ if __name__ == "__main__":
         ['注文番号', '銘柄コード', '売買', '約定単価', '約定数量', '損益', '備考']
     ]
     pd.set_option('display.max_rows', None)  # 行を省略せず出力する
-    print(df_transaction_last)
     pd.reset_option("display.max_rows")  # 設定をデフォルト値に戻す
 
     pnl = df_transaction_last["損益"].sum()

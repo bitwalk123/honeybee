@@ -43,21 +43,23 @@ class TrainingEnv(gym.Env):
         [market] - VecNormalize Wrapper で標準化
         1. MA1（短周期移動平均）
         2. Profit（含み損益）
-        [cross] - 符号が重要であるため標準化しない
+        3. ProfitMax（最大含み損益）
+        [cross] - 符号が重要であるため標準化しない (-1, 1)
         1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
         2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
         [counter] - VecNormalize Wrapper で標準化
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
+        3. dd_ratio（ドローダウン率）
         [position] - 標準化不要
         1. SHORT
         2. NONE
         3. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
+            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
             "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
-            "counter": spaces.Box(low=0, high=np.inf, shape=(2,), dtype=np.float32),
+            "counter": spaces.Box(low=0, high=np.inf, shape=(3,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -202,7 +204,7 @@ class TrainingEnv(gym.Env):
             self.CODE, self.s.ts, self.s.price, action_type
         )
         self.s.n_trade += 1  # 取引回数の更新
-        self.s.profit_pre = 0.0  # 一つ前の含み益
+        self.s.reset_profit_pre()  # 一つ前の含み益のリセット
         # 【報酬・ペナルティ】
         r = 0.0
         r -= self.s.COST_CONTRACT  # 約定コスト
@@ -258,11 +260,12 @@ class TrainingEnv(gym.Env):
             [
                 1.0,
                 0.0,
+                0.0,
             ],
             dtype=np.float32
         )
         cross = np.array([0, 0], dtype=np.float32)
-        counter = np.array([0, 0], dtype=np.float32)
+        counter = np.array([0, 0, 0], dtype=np.float32)
         position = position_to_onehot(self.s.position).astype(np.float32)
         obs = {"market": market, "cross": cross, "counter": counter, "position": position}
 
@@ -284,62 +287,76 @@ class TrainingEnv(gym.Env):
         # 情報用辞書
         info = {}
 
-        # ====== 建玉管理 ======
-        action_type = ActionType(action)
-        reward_cross_ma_golden = self.get_reward_cross_ma_golden()
-        reward_cross_ma_dead = self.get_reward_cross_ma_dead()
-        if action_type == ActionType.BUY:
-            if self.s.position == PositionType.NONE:
-                # 【買建】建玉がなければ買建
-                reward += self.position_open(action_type)
-                # ゴールデン・クロス時のエントリに対する報酬
-                reward += reward_cross_ma_golden
-                # デッド・クロス時のエントリに対するペナルティ
-                reward -= reward_cross_ma_dead
-            elif self.s.position == PositionType.SHORT:
-                # 【返済】売建（ショート）であれば（買って）返済
-                reward += self.position_close()
-            else:
-                raise RuntimeError("Trade rule violation!")
-        elif action_type == ActionType.SELL:
-            if self.s.position == PositionType.NONE:
-                # 【売建】建玉がなければ売建
-                reward += self.position_open(action_type)
-                # ゴールデン・クロス時のエントリに対するペナルティ
-                reward -= reward_cross_ma_golden
-                # デッド・クロス時のエントリに対する報酬
-                reward += reward_cross_ma_dead
-            elif self.s.position == PositionType.LONG:
-                # 【返済】買建（ロング）であれば（売って）返済
-                reward += self.position_close()
-            else:
-                raise RuntimeError("Trade rule violation!")
-        elif action_type == ActionType.HOLD:
-            if self.s.position == PositionType.NONE:
-                # クロス・シグナルに応じた僅かなペナルティ
-                reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
-                denom = 1000.0
-                reward -= reward_sum / denom
-            else:
-                # 【報酬・ペナルティ】
-                # 含み益があれば幾分かを報酬に
-                reward += self.s.get_reward_unrealized_profit()
-        else:
-            raise TypeError(f"Unknown ActionType: {action_type}!")
-
-        # ====== 連続含み損評価 ======
         self.s.update_count_negative()
-        reward += self.s.get_penalty_negative()
+        flag_not_action_yet = True  # ポジション変更のアクション済か確認用フラグ
+        # 1. 利確判定
+        if self.s.does_take_profit():
+            # 建玉返済
+            reward += self.position_close_force(note="ドローダウン利確")
+            flag_not_action_yet = False
+
+        # 2. 連続含み損評価・判定
         if self.s.flag_losscut_consecutive:
-            # 【ロスカット】
-            if self.posman.hasPosition(self.CODE):
-                _ = self.position_close_force()
-        """
-        if self.s.is_losscut():
-            # 【ロスカット】
-            if self.posman.hasPosition(self.CODE):
-                _ = self.position_close_force()
-        """
+            if flag_not_action_yet and self.posman.hasPosition(self.CODE):
+                reward += self.position_close_force(note="連続含み損")
+                flag_not_action_yet = False
+            else:
+                reward += self.s.get_penalty_negative()
+
+        # 3. 含み益→含み損ロスカット判定
+        if flag_not_action_yet and 5 < self.s.profit_max and self.s.profit < -10:
+            self.position_close_force(note="益→損ロスカット")
+            flag_not_action_yet = False
+
+        # 4. 単純ロスカット判定
+        if flag_not_action_yet and self.s.is_losscut():
+            self.position_close_force(note="単純ロスカット")
+            flag_not_action_yet = False
+
+        if flag_not_action_yet:
+            # ====== 建玉管理 ======
+            action_type = ActionType(action)
+            reward_cross_ma_golden = self.get_reward_cross_ma_golden()
+            reward_cross_ma_dead = self.get_reward_cross_ma_dead()
+            if action_type == ActionType.BUY:
+                if self.s.position == PositionType.NONE:
+                    # 【買建】建玉がなければ買建
+                    reward += self.position_open(action_type)
+                    # ゴールデン・クロス時のエントリに対する報酬
+                    reward += reward_cross_ma_golden
+                    # デッド・クロス時のエントリに対するペナルティ
+                    reward -= reward_cross_ma_dead
+                elif self.s.position == PositionType.SHORT:
+                    # 【返済】売建（ショート）であれば（買って）返済
+                    reward += self.position_close()
+                else:
+                    raise RuntimeError("Trade rule violation!")
+            elif action_type == ActionType.SELL:
+                if self.s.position == PositionType.NONE:
+                    # 【売建】建玉がなければ売建
+                    reward += self.position_open(action_type)
+                    # ゴールデン・クロス時のエントリに対するペナルティ
+                    reward -= reward_cross_ma_golden
+                    # デッド・クロス時のエントリに対する報酬
+                    reward += reward_cross_ma_dead
+                elif self.s.position == PositionType.LONG:
+                    # 【返済】買建（ロング）であれば（売って）返済
+                    reward += self.position_close()
+                else:
+                    raise RuntimeError("Trade rule violation!")
+            elif action_type == ActionType.HOLD:
+                if self.s.position == PositionType.NONE:
+                    # クロス・シグナルに応じた僅かなペナルティ
+                    reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
+                    denom = 1000.0
+                    reward -= reward_sum / denom
+                else:
+                    # 【報酬・ペナルティ】
+                    # 含み益があれば幾分かを報酬に
+                    reward += self.s.get_reward_unrealized_profit()
+            else:
+                raise TypeError(f"Unknown ActionType: {action_type}!")
+
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)

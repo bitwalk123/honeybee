@@ -1,7 +1,5 @@
 import glob
 import os
-import random
-import sys
 
 from modules.agent import MyPPOAgent
 
@@ -22,17 +20,17 @@ if __name__ == "__main__":
     # 学習に使用するティックデータ
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
-    list_excel_all = sorted(glob.glob(path_excel))
+    list_excel = sorted(glob.glob(path_excel))
     # list_excel = list_excel_all
 
     # 1 日あたりのエピソード
-    episodes_per_day = 5
+    episodes_per_day = 10
 
     # ティックデータ数 × episodes_per_day エピソード分のリストを作る
-    list_excel = list_excel_all * episodes_per_day
+    list_excel_episode = list_excel * episodes_per_day
 
     # 学習
-    agent.train(list_excel)
+    agent.train(list_excel_episode)
 
     # 推論（確認用）
     # file_excel = list_excel[-1]

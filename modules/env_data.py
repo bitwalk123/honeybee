@@ -20,7 +20,7 @@ class EnvData:
     PERIOD_MA_2: int = 900
     N_MINUS_MAX: int = 300
     LOSSCUT_1: float = -25.0
-    DD_RATIO: float = 0.5
+    DD_RATIO_MAX: float = 0.5
     DD_THRESHOLD: float = 10.0
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
@@ -50,6 +50,7 @@ class EnvData:
     diff_vwap: float = 0.0
     profit: float = 0.0  # 含み損益
     profit_max: float = 0.0  # 最大含み損益
+    dd_ratio: float = 0.0  # ドローダウン比率
 
     ts_open: float = 0.0
     price_open: float = 0.0
@@ -80,7 +81,7 @@ class EnvData:
     }
 
     def does_take_profit(self) -> bool:
-        if self.DD_THRESHOLD < self.profit and self.DD_RATIO < self.update_profit_max():
+        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
             return True
         else:
             return False
@@ -116,6 +117,7 @@ class EnvData:
                 [
                     self.ma1 / self.price_open,
                     self.profit,
+                    self.profit_max,
                 ],
                 dtype=np.float32
             )
@@ -124,6 +126,7 @@ class EnvData:
                 [
                     1.0,
                     self.profit,
+                    self.profit_max,
                 ],
                 dtype=np.float32
             )
@@ -138,7 +141,8 @@ class EnvData:
         counter = np.array(
             [
                 self.n_trade,
-                self.count_negative
+                self.count_negative,
+                self.dd_ratio,
             ],
             dtype=np.float32
         )
@@ -183,6 +187,8 @@ class EnvData:
             "ma2": self.ma2,
             "vwap": self.vwap,
             "profit": self.profit,
+            "profit_max": self.profit_max,
+            "dd_ratio": self.dd_ratio,
             "diff_ma": self.diff_ma,
             "diff_vwap": self.diff_vwap,
             "n_trade": self.n_trade,
@@ -230,30 +236,24 @@ class EnvData:
         else:
             self.flag_losscut_consecutive = False
 
-    """
-    def update_flag_losscut_consecutive(self):
-        if self.count_negative > self.N_MINUS_MAX:
-            self.flag_losscut_consecutive = True
-        else:
-            self.flag_losscut_consecutive = False
-    """
-
     def update_dict_reward(self, reward) -> None:
         self.dict_reward["ts"].append(self.ts)
         self.dict_reward["reward"].append(reward)
 
-    def update_profit_max(self) -> float:
+    def update_dd_ratio(self) -> float:
         if 0 <= self.profit:
             if self.profit_max < self.profit:
                 self.profit_max = self.profit
-                return 0.0
+                self.dd_ratio = 0.0
             elif 0 < self.profit_max:
-                # Drawdown Ration
-                return (self.profit_max - self.profit) / self.profit_max
+                # Drawdown Ratio
+                self.dd_ratio = (self.profit_max - self.profit) / self.profit_max
             else:
-                return 0.0
+                self.dd_ratio = 0.0
         else:
-            return 0.0
+            self.dd_ratio = 0.0
+
+        return self.dd_ratio
 
     def update_profit_pre(self):
         self.profit_pre = self.profit  # 一つ前の含み益の更新

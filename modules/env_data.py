@@ -149,6 +149,7 @@ class EnvData:
             [
                 self.n_trade,
                 self.count_negative,
+                self.count_post_contract,
                 self.dd_ratio,
             ],
             dtype=np.float32

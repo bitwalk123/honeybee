@@ -50,7 +50,8 @@ class TrainingEnv(gym.Env):
         [counter] - VecNormalize Wrapper で標準化
         1. n_trade（約定回数）
         2. count_negative（含み損の継続カウンタ）
-        3. dd_ratio（ドローダウン率）
+        3. count_post_contract（約定後の経過カウンタ）
+        4. dd_ratio（ドローダウン率）
         [position] - 標準化不要
         1. SHORT
         2. NONE
@@ -59,7 +60,7 @@ class TrainingEnv(gym.Env):
         self.observation_space = spaces.Dict({
             "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
             "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
-            "counter": spaces.Box(low=0, high=np.inf, shape=(3,), dtype=np.float32),
+            "counter": spaces.Box(low=0, high=np.inf, shape=(4,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -265,7 +266,7 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         cross = np.array([0, 0], dtype=np.float32)
-        counter = np.array([0, 0, 0], dtype=np.float32)
+        counter = np.array([0, 0, 0, 0], dtype=np.float32)
         position = position_to_onehot(self.s.position).astype(np.float32)
         obs = {"market": market, "cross": cross, "counter": counter, "position": position}
 

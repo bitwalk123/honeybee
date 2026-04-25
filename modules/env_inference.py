@@ -51,13 +51,13 @@ class InferenceEnv(TrainingEnv):
             action: モデルが出力したアクション値
         """
         action_type = ActionType(action)
-
         if action_type == ActionType.HOLD:
-            return  # 何もしない
-
-        if action_type == ActionType.BUY:
+            self.s.inc_count_post_contract()
+        elif action_type == ActionType.BUY:
+            self.s.reset_count_post_contract()
             self._handle_buy_action()
         elif action_type == ActionType.SELL:
+            self.s.reset_count_post_contract()
             self._handle_sell_action()
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")

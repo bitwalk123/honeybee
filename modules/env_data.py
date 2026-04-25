@@ -15,20 +15,21 @@ class EnvData:
     # 売買系
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
-    PERIOD_WARMUP: int = 300
-    PERIOD_MA_1: int = 90
-    PERIOD_MA_2: int = 900
-    N_MINUS_MAX: int = 300
-    LOSSCUT_1: float = -25.0
-    DD_RATIO_MAX: float = 0.5
-    DD_THRESHOLD: float = 10.0
+    PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
+    PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
+    PERIOD_MA_1: int = 90  # 移動平均線の期間1
+    PERIOD_MA_2: int = 900  # 移動平均線の期間2
+    N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
+    LOSSCUT_1: float = -25.0  # 単純ロスカット
+    DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率
+    DD_THRESHOLD: float = 10.0  # ドローダウン利確の閾値
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.025  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.0025  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
-    COST_CONTRACT: float = 1.0  # 約定手数料（スリッページ相当）
+    COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
-
+    # 学習用ティックデータの報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"
 
@@ -37,6 +38,7 @@ class EnvData:
     position: PositionType = PositionType.NONE  # ポジション
     n_trade: int = 0  # 約定回数
     count_negative: int = 0  # 含み損の継続カウンタ
+    count_post_contract: int = 0  # 約定後の HOLD カウント用
     pnl_total: float = 0  # エピソードにおける総報酬
     # dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
     dict_reward: dict = field(default_factory=lambda: defaultdict(list))
@@ -98,6 +100,11 @@ class EnvData:
         if self.row < self.PERIOD_WARMUP:
             # ウォーミングアップ期間 → 強制 HOLD
             return self.MASK_HOLD_ONLY
+
+        if self.count_post_contract < self.PERIOD_HOLD:
+            # 約定後の HOLD 期間 → 強制 HOLD
+            return self.MASK_HOLD_ONLY
+
         try:
             return self.POSITION_MASKS[self.position]
         except KeyError:
@@ -197,6 +204,18 @@ class EnvData:
 
     def inc_row(self):
         self.row += 1
+
+    def get_count_post_contract(self) -> int:
+        """ 約定後のカウント数を取得 """
+        return self.count_post_contract
+
+    def inc_count_post_contract(self) -> None:
+        """ 約定後のカウント数をインクリメント """
+        self.count_post_contract += 1
+
+    def reset_count_post_contract(self) -> None:
+        """ 約定後のカウント数をリセット """
+        self.count_post_contract = 0
 
     def is_losscut(self) -> bool:
         return self.profit < self.LOSSCUT_1

@@ -324,6 +324,7 @@ class TrainingEnv(gym.Env):
         reward_cross_ma_golden = self.get_reward_cross_ma_golden()
         reward_cross_ma_dead = self.get_reward_cross_ma_dead()
         if action_type == ActionType.BUY:
+            self.s.reset_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 reward += self.position_open(action_type)
@@ -337,6 +338,7 @@ class TrainingEnv(gym.Env):
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.SELL:
+            self.s.reset_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 reward += self.position_open(action_type)
@@ -350,6 +352,7 @@ class TrainingEnv(gym.Env):
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
+            self.s.inc_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # クロス・シグナルに応じた僅かなペナルティ
                 reward_sum = reward_cross_ma_golden + reward_cross_ma_dead

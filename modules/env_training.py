@@ -208,7 +208,7 @@ class TrainingEnv(gym.Env):
         self.s.reset_profit_pre()  # 一つ前の含み益のリセット
         # 【報酬・ペナルティ】
         r = 0.0
-        r -= self.s.COST_CONTRACT  # 約定コスト
+        r += self.s.add_contract_cost()  # 約定コスト
         return r
 
     def position_close(self, note="") -> float:
@@ -225,7 +225,7 @@ class TrainingEnv(gym.Env):
         self.s.reset_profit_max()  # 最大含み益のリセット
         # 【報酬】
         r = 0.0
-        r -= self.s.COST_CONTRACT  # 約定コスト
+        r += self.s.add_contract_cost()  # 約定コスト
         r += self.s.profit  # 含み損益分そっくり報酬
         self.s.reset_count_negative()
         return r

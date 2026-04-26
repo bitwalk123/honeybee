@@ -16,7 +16,7 @@ class EnvData:
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
-    PERIOD_HOLD: int = 10  # 約定後に HOLD に固定する期間（ティック数）
+    PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
@@ -87,6 +87,18 @@ class EnvData:
             return True
         else:
             return False
+
+    def add_contract_cost(self) -> float:
+        cost = -self.COST_CONTRACT
+        # 直ぐに反対売買をした場合はペナルティを多くする。
+        denom = self.count_post_contract - self.PERIOD_HOLD
+        if 0 < denom:
+            cost -= 5 / denom
+        return cost
+
+    def get_count_post_contract(self) -> int:
+        """ 約定後のカウント数を取得 """
+        return self.count_post_contract
 
     def get_masks(self):
         """
@@ -203,20 +215,12 @@ class EnvData:
             "count_negative": self.count_negative,
         }
 
-    def inc_row(self):
-        self.row += 1
-
-    def get_count_post_contract(self) -> int:
-        """ 約定後のカウント数を取得 """
-        return self.count_post_contract
-
     def inc_count_post_contract(self) -> None:
         """ 約定後のカウント数をインクリメント """
         self.count_post_contract += 1
 
-    def reset_count_post_contract(self) -> None:
-        """ 約定後のカウント数をリセット """
-        self.count_post_contract = 0
+    def inc_row(self):
+        self.row += 1
 
     def is_losscut(self) -> bool:
         return self.profit < self.LOSSCUT_1
@@ -224,6 +228,10 @@ class EnvData:
     def reset_count_negative(self):
         self.count_negative = 0
         self.flag_losscut_consecutive = False
+
+    def reset_count_post_contract(self) -> None:
+        """ 約定後のカウント数をリセット """
+        self.count_post_contract = 0
 
     def reset_profit_pre(self):
         self.profit_pre = 0.0

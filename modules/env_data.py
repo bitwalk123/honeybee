@@ -16,7 +16,7 @@ class EnvData:
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
-    PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
+    PERIOD_HOLD: int = 10  # 約定後に HOLD に固定する期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数

@@ -29,7 +29,7 @@ class EnvData:
     RATIO_PROFIT_CHANGE_HOLD: float = 0.0025  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
-    NUMERATOR_RECONTRACT: float = 1.0  # 約定後の最約定コスト
+    NUMERATOR_RECONTRACT: float = 3.0  # 約定後の最約定コスト
     # 学習用ティックデータの報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"

@@ -16,7 +16,7 @@ class EnvData:
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
-    PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
+    # PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
@@ -29,6 +29,7 @@ class EnvData:
     RATIO_PROFIT_CHANGE_HOLD: float = 0.0025  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
+    NUMERATOR_RECONTRACT: float = 1.0  # 約定後の最約定コスト
     # 学習用ティックデータの報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"
@@ -88,13 +89,20 @@ class EnvData:
         else:
             return False
 
+    def inc_row(self):
+        self.row += 1
+        """ 約定後のカウント数をインクリメント """
+        self.count_post_contract += 1
+
     def add_contract_cost(self) -> float:
         cost = -self.COST_CONTRACT
         # 直ぐに反対売買をした場合はペナルティを多くする。
-        denom = self.count_post_contract - self.PERIOD_HOLD
-        if 0 < denom:
-            cost -= 5 / denom
+        cost -= self.NUMERATOR_RECONTRACT / self.count_post_contract if 0 < self.count_post_contract else 0.0
         return cost
+
+    def reset_count_post_contract(self) -> None:
+        """ 約定後のカウント数をリセット """
+        self.count_post_contract = 0
 
     def get_count_post_contract(self) -> int:
         """ 約定後のカウント数を取得 """
@@ -113,10 +121,6 @@ class EnvData:
             # ウォーミングアップ期間 → 強制 HOLD
             return self.MASK_HOLD_ONLY
 
-        if self.count_post_contract < self.PERIOD_HOLD:
-            # 約定後の HOLD 期間 → 強制 HOLD
-            return self.MASK_HOLD_ONLY
-
         try:
             return self.POSITION_MASKS[self.position]
         except KeyError:
@@ -131,24 +135,18 @@ class EnvData:
         日毎に生じる絶対値のズレを少しでも抑えたい。
         そのため、株価に関連する特徴量に対して、始値で割っている。
         """
-        if self.price_open > 0:
-            market = np.array(
-                [
-                    self.ma1 / self.price_open,
-                    self.profit,
-                    self.profit_max,
-                ],
-                dtype=np.float32
-            )
-        else:
-            market = np.array(
-                [
-                    1.0,
-                    self.profit,
-                    self.profit_max,
-                ],
-                dtype=np.float32
-            )
+        market = np.array(
+            [
+                self.ma1 / self.price_open if self.price_open > 0 else 1.0,  # 1. MA1（短周期移動平均）
+                self.profit,  # 2. Profit（含み損益）
+                self.profit_max,  # 3. ProfitMax（最大含み損益）
+                self.n_trade,  # 4. n_trade（約定回数）
+                self.count_negative,  # 5. count_negative（含み損の継続カウンタ）
+                self.add_contract_cost(),  # 6. 約定コスト
+                self.dd_ratio,  # 7. dd_ratio（ドローダウン率）
+            ],
+            dtype=np.float32
+        )
 
         cross = np.array(
             [
@@ -157,20 +155,11 @@ class EnvData:
             ],
             dtype=np.float32
         )
-        counter = np.array(
-            [
-                self.n_trade,
-                self.count_negative,
-                self.count_post_contract,
-                self.dd_ratio,
-            ],
-            dtype=np.float32
-        )
+
         position = position_to_onehot(self.position).astype(np.float32)
         obs = {
             "market": market,
             "cross": cross,
-            "counter": counter,
             "position": position,
         }
         return obs
@@ -215,23 +204,12 @@ class EnvData:
             "count_negative": self.count_negative,
         }
 
-    def inc_count_post_contract(self) -> None:
-        """ 約定後のカウント数をインクリメント """
-        self.count_post_contract += 1
-
-    def inc_row(self):
-        self.row += 1
-
     def is_losscut(self) -> bool:
         return self.profit < self.LOSSCUT_1
 
     def reset_count_negative(self):
         self.count_negative = 0
         self.flag_losscut_consecutive = False
-
-    def reset_count_post_contract(self) -> None:
-        """ 約定後のカウント数をリセット """
-        self.count_post_contract = 0
 
     def reset_profit_pre(self):
         self.profit_pre = 0.0

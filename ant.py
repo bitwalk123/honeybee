@@ -17,7 +17,7 @@ def get_transaction(f: str, r: dict, d: dict) -> None:
     filename = os.path.basename(f)
     pnl = df["損益"].sum()
     n_contract = len(df)
-    print(f"{filename}, 損益 : {pnl} 円, 約定係数 : {n_contract} 回")
+    print(f"{filename}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")
 
     d["file"].append(filename)
     d["code"].append(code)

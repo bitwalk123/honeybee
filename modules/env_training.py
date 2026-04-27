@@ -1,3 +1,5 @@
+import datetime
+
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -44,23 +46,42 @@ class TrainingEnv(gym.Env):
         1. MA1（短周期移動平均）
         2. Profit（含み損益）
         3. ProfitMax（最大含み損益）
+        4. n_trade（約定回数）
+        5. count_negative（含み損の継続カウンタ）
+        6. 約定コスト
+        7. dd_ratio（ドローダウン率）
         [cross] - 符号が重要であるため標準化しない (-1, 1)
         1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
         2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
-        [counter] - VecNormalize Wrapper で標準化
-        1. n_trade（約定回数）
-        2. count_negative（含み損の継続カウンタ）
-        3. count_post_contract（約定後の経過カウンタ）
-        4. dd_ratio（ドローダウン率）
         [position] - 標準化不要
         1. SHORT
         2. NONE
         3. LONG
         """
         self.observation_space = spaces.Dict({
-            "market": spaces.Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
+            "market": spaces.Box(
+                low=np.array([
+                    -np.float32('inf'),  # 1. MA1（短周期移動平均）
+                    -np.float32('inf'),  # 2. Profit（含み損益）
+                    -np.float32('inf'),  # 3. ProfitMax（最大含み損益）
+                    np.float32(0),  # 4. n_trade（約定回数）
+                    np.float32(0),  # 5. count_negative（含み損の継続カウンタ）
+                    -np.float32('inf'),  # 6. 約定コスト
+                    np.float32(0),  # 7. dd_ratio（ドローダウン率）
+                ]),
+                high=np.array([
+                    np.float32('inf'),  # 1. MA1（短周期移動平均）
+                    np.float32('inf'),  # 2. Profit（含み損益）
+                    np.float32('inf'),  # 3. ProfitMax（最大含み損益）
+                    np.float32('inf'),  # 4. n_trade（約定回数）
+                    np.float32('inf'),  # 5. count_negative（含み損の継続カウンタ）
+                    np.float32(-self.s.COST_CONTRACT),  # 6. 約定コスト
+                    np.float32('inf'),  # 7. dd_ratio（ドローダウン率）
+                ]),
+                shape=(7,),
+                dtype=np.float32
+            ),
             "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
-            "counter": spaces.Box(low=0, high=np.inf, shape=(4,), dtype=np.float32),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -209,6 +230,8 @@ class TrainingEnv(gym.Env):
         # 【報酬・ペナルティ】
         r = 0.0
         r += self.s.add_contract_cost()  # 約定コスト
+        # print("open", datetime.datetime.fromtimestamp(self.s.ts), self.s.count_post_contract, r)
+        self.s.reset_count_post_contract()  # 約定後の経過カウンタのリセット
         return r
 
     def position_close(self, note="") -> float:
@@ -226,6 +249,8 @@ class TrainingEnv(gym.Env):
         # 【報酬】
         r = 0.0
         r += self.s.add_contract_cost()  # 約定コスト
+        # print("close", datetime.datetime.fromtimestamp(self.s.ts), self.s.count_post_contract, r, self.s.profit)
+        self.s.reset_count_post_contract()  # 約定後の経過カウンタのリセット
         r += self.s.profit  # 含み損益分そっくり報酬
         self.s.reset_count_negative()
         return r
@@ -262,13 +287,18 @@ class TrainingEnv(gym.Env):
                 1.0,
                 0.0,
                 0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
             ],
             dtype=np.float32
         )
         cross = np.array([0, 0], dtype=np.float32)
-        counter = np.array([0, 0, 0, 0], dtype=np.float32)
+        # counter = np.array([0, 0, 0, 0], dtype=np.float32)
         position = position_to_onehot(self.s.position).astype(np.float32)
-        obs = {"market": market, "cross": cross, "counter": counter, "position": position}
+        # obs = {"market": market, "cross": cross, "counter": counter, "position": position}
+        obs = {"market": market, "cross": cross, "position": position}
 
         info = {}  # Additional debug info
         return obs, info
@@ -319,13 +349,12 @@ class TrainingEnv(gym.Env):
             flag_not_action_yet = False
         """
 
-        #if flag_not_action_yet:
+        # if flag_not_action_yet:
         # ====== 建玉管理 ======
         action_type = ActionType(action)
         reward_cross_ma_golden = self.get_reward_cross_ma_golden()
         reward_cross_ma_dead = self.get_reward_cross_ma_dead()
         if action_type == ActionType.BUY:
-            self.s.reset_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 reward += self.position_open(action_type)
@@ -339,7 +368,6 @@ class TrainingEnv(gym.Env):
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.SELL:
-            self.s.reset_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 reward += self.position_open(action_type)
@@ -353,7 +381,6 @@ class TrainingEnv(gym.Env):
             else:
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
-            self.s.inc_count_post_contract()
             if self.s.position == PositionType.NONE:
                 # クロス・シグナルに応じた僅かなペナルティ
                 reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
@@ -365,7 +392,6 @@ class TrainingEnv(gym.Env):
                 reward += self.s.get_reward_unrealized_profit()
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
-
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)

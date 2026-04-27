@@ -116,7 +116,7 @@ class MyPPOAgent:
                         env_dummy,
                         norm_obs=True,
                         norm_reward=True,
-                        norm_obs_keys=["market", "counter"]
+                        norm_obs_keys=["market"]
                     )
             else:
                 # 2 回目以降は環境だけ差し替える
@@ -126,7 +126,7 @@ class MyPPOAgent:
                     env_dummy,
                     norm_obs=True,
                     norm_reward=True,
-                    norm_obs_keys=["market", "counter"]
+                    norm_obs_keys=["market"]
                 )
                 new_env.obs_rms = env_train.obs_rms
                 new_env.ret_rms = env_train.ret_rms

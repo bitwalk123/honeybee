@@ -52,8 +52,9 @@ class InferenceEnv(TrainingEnv):
         """
         action_type = ActionType(action)
         if action_type == ActionType.HOLD:
-            self.s.inc_count_post_contract()
-        elif action_type == ActionType.BUY:
+            return
+
+        if action_type == ActionType.BUY:
             self.s.reset_count_post_contract()
             self._handle_buy_action()
         elif action_type == ActionType.SELL:

@@ -21,7 +21,7 @@ class EnvData:
     PERIOD_WARMUP: int = 450  # インジケータのウォームアップ期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
-    PERIOD_RSI: int = 150  # RSIの期間
+    PERIOD_RSI: int = 300  # RSIの期間
     PERIOD_MOM: int = 300  # モメンタムの期間
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
     LOSSCUT_1: float = -25.0  # 単純ロスカット

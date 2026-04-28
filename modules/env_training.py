@@ -1,5 +1,3 @@
-import datetime
-
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -8,7 +6,7 @@ from gymnasium import spaces
 from funcs.conv import position_to_onehot
 from modules.env_data import EnvData
 from modules.posman import PositionManager
-from modules.technical import MovingAverage, VWAP
+from modules.technical import MovingAverage, VWAP, RSI, Momentum
 from structs.app_enum import ActionType, PositionType
 
 
@@ -44,15 +42,18 @@ class TrainingEnv(gym.Env):
         【観測値】- VecNormalize Wrapper を使用する前提
         [market] - VecNormalize Wrapper で標準化
         1. MA1（短周期移動平均）
-        2. Profit（含み損益）
-        3. ProfitMax（最大含み損益）
-        4. n_trade（約定回数）
-        5. count_negative（含み損の継続カウンタ）
-        6. 約定コスト
-        7. dd_ratio（ドローダウン率）
+        2. MA2（長周期移動平均）
+        3. Momentum（モメンタム）
+        4. Profit（含み損益）
+        5. ProfitMax（最大含み損益）
+        6. n_trade（約定回数）
+        7. count_negative（含み損の継続カウンタ）
+        8. 約定コスト
+        9. dd_ratio（ドローダウン率）
         [cross] - 符号が重要であるため標準化しない (-1, 1)
         1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
         2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+        3. RSI
         [position] - 標準化不要
         1. SHORT
         2. NONE
@@ -62,26 +63,43 @@ class TrainingEnv(gym.Env):
             "market": spaces.Box(
                 low=np.array([
                     -np.float32('inf'),  # 1. MA1（短周期移動平均）
-                    -np.float32('inf'),  # 2. Profit（含み損益）
-                    -np.float32('inf'),  # 3. ProfitMax（最大含み損益）
-                    np.float32(0),  # 4. n_trade（約定回数）
-                    np.float32(0),  # 5. count_negative（含み損の継続カウンタ）
-                    -np.float32('inf'),  # 6. 約定コスト
-                    np.float32(0),  # 7. dd_ratio（ドローダウン率）
+                    -np.float32('inf'),  # 2. MA2（長周期移動平均）
+                    -np.float32('inf'),  # 3. Momentum（モメンタム）
+                    -np.float32('inf'),  # 4. Profit（含み損益）
+                    -np.float32('inf'),  # 5. ProfitMax（最大含み損益）
+                    np.float32(0),  # 6. n_trade（約定回数）
+                    np.float32(0),  # 7. count_negative（含み損の継続カウンタ）
+                    -np.float32('inf'),  # 8. 約定コスト
+                    np.float32(0),  # 9. dd_ratio（ドローダウン率）
                 ]),
                 high=np.array([
                     np.float32('inf'),  # 1. MA1（短周期移動平均）
-                    np.float32('inf'),  # 2. Profit（含み損益）
-                    np.float32('inf'),  # 3. ProfitMax（最大含み損益）
-                    np.float32('inf'),  # 4. n_trade（約定回数）
-                    np.float32('inf'),  # 5. count_negative（含み損の継続カウンタ）
-                    np.float32(-self.s.COST_CONTRACT),  # 6. 約定コスト
-                    np.float32('inf'),  # 7. dd_ratio（ドローダウン率）
+                    np.float32('inf'),  # 2. MA2（長周期移動平均）
+                    np.float32('inf'),  # 3. Momentum（モメンタム）
+                    np.float32('inf'),  # 4. Profit（含み損益）
+                    np.float32('inf'),  # 5. ProfitMax（最大含み損益）
+                    np.float32('inf'),  # 6. n_trade（約定回数）
+                    np.float32('inf'),  # 7. count_negative（含み損の継続カウンタ）
+                    np.float32(-self.s.COST_CONTRACT),  # 8. 約定コスト
+                    np.float32('inf'),  # 9. dd_ratio（ドローダウン率）
                 ]),
-                shape=(7,),
+                shape=(9,),
                 dtype=np.float32
             ),
-            "cross": spaces.Box(low=-np.inf, high=np.inf, shape=(2,), dtype=np.float32),
+            "cross": spaces.Box(
+                low=np.array([
+                    np.float32(-1),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
+                    np.float32(-1),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+                    np.float32(0),  # 3. RSI
+                ]),
+                high=np.array([
+                    np.float32(1),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
+                    np.float32(1),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+                    np.float32(1),  # 3. RSI
+                ]),
+                shape=(3,),
+                dtype=np.float32
+            ),
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -106,6 +124,14 @@ class TrainingEnv(gym.Env):
 
         # 乖離度 (MA1 - VWAP) / VWAP
         self.df_tick["DiffVWAP"] = (self.df_tick["MA1"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"] * 100.
+
+        # RSI
+        rsi = RSI(window_size=self.s.PERIOD_RSI)
+        self.df_tick["RSI"] = [rsi.update(p) for p in self.df_tick["Price"]]
+
+        # Momentum
+        mom = Momentum(window_size=self.s.PERIOD_MOM)
+        self.df_tick["Momentum"] = [mom.update(p) for p in self.df_tick["Price"]]
 
     def _prep_rewards(self):
         colname1 = self.s.COL_CROSS_MA_GOLDEN
@@ -180,11 +206,9 @@ class TrainingEnv(gym.Env):
     def get_data(self) -> None:
         """
         ティックデータから一行抽出
-        :param row:
         :return:
         """
-        list_name = ["Time", "Price", "MA1", "MA2", "DiffMA", "VWAP", "DiffVWAP"]
-        row = self.df_tick.iloc[self.s.row][list_name]
+        row = self.df_tick.iloc[self.s.row][self.s.list_col_name]
         self.s.set_data(row)
 
     def get_data_open(self) -> None:
@@ -258,7 +282,7 @@ class TrainingEnv(gym.Env):
     def position_close_force(self, note="強制返済") -> float:
         """
         ポジション・クローズ（強制）
-        :param profit:
+        :param note:
         :return:
         """
         return self.position_close(note)
@@ -284,20 +308,20 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         market = np.array(
             [
-                1.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
-                0.0,
+                1,  # 1. MA1（短周期移動平均）
+                1,  # 2. MA2（長周期移動平均）
+                0,  # 3. Momentum（モメンタム）
+                0,  # 4. Profit（含み損益）
+                0,  # 5. ProfitMax（最大含み損益）
+                0,  # 6. n_trade（約定回数）
+                0,  # 7. count_negative（含み損の継続カウンタ）
+                0,  # 8. 約定コスト
+                0,  # 9. dd_ratio（ドローダウン率）
             ],
             dtype=np.float32
         )
-        cross = np.array([0, 0], dtype=np.float32)
-        # counter = np.array([0, 0, 0, 0], dtype=np.float32)
+        cross = np.array([0, 0, 0], dtype=np.float32)
         position = position_to_onehot(self.s.position).astype(np.float32)
-        # obs = {"market": market, "cross": cross, "counter": counter, "position": position}
         obs = {"market": market, "cross": cross, "position": position}
 
         info = {}  # Additional debug info
@@ -321,8 +345,8 @@ class TrainingEnv(gym.Env):
         # === 連続含み損評価 ===
         self.s.update_count_negative()
         reward += self.s.get_penalty_negative()
-        """
-        強制的な利確・ロスカットすると学習に影響するようだ
+
+        # 強制的な利確・ロスカットすると学習に影響するようだ
         flag_not_action_yet = True  # ポジション変更のアクション済か確認用フラグ
         # 1. 利確判定
         if self.s.does_take_profit():
@@ -347,51 +371,51 @@ class TrainingEnv(gym.Env):
         if flag_not_action_yet and self.s.is_losscut():
             reward += self.position_close_force(note="単純ロスカット")
             flag_not_action_yet = False
-        """
 
-        # if flag_not_action_yet:
-        # ====== 建玉管理 ======
-        action_type = ActionType(action)
-        reward_cross_ma_golden = self.get_reward_cross_ma_golden()
-        reward_cross_ma_dead = self.get_reward_cross_ma_dead()
-        if action_type == ActionType.BUY:
-            if self.s.position == PositionType.NONE:
-                # 【買建】建玉がなければ買建
-                reward += self.position_open(action_type)
-                # ゴールデン・クロス時のエントリに対する報酬
-                reward += reward_cross_ma_golden
-                # デッド・クロス時のエントリに対するペナルティ
-                reward -= reward_cross_ma_dead
-            elif self.s.position == PositionType.SHORT:
-                # 【返済】売建（ショート）であれば（買って）返済
-                reward += self.position_close()
+        if flag_not_action_yet:
+            # ====== 建玉管理 ======
+            action_type = ActionType(action)
+            # reward_cross_ma_golden = self.get_reward_cross_ma_golden()
+            # reward_cross_ma_dead = self.get_reward_cross_ma_dead()
+            if action_type == ActionType.BUY:
+                if self.s.position == PositionType.NONE:
+                    # 【買建】建玉がなければ買建
+                    reward += self.position_open(action_type)
+                    # ゴールデン・クロス時のエントリに対する報酬
+                    # reward += reward_cross_ma_golden
+                    # デッド・クロス時のエントリに対するペナルティ
+                    # reward -= reward_cross_ma_dead
+                elif self.s.position == PositionType.SHORT:
+                    # 【返済】売建（ショート）であれば（買って）返済
+                    reward += self.position_close()
+                else:
+                    raise RuntimeError("Trade rule violation!")
+            elif action_type == ActionType.SELL:
+                if self.s.position == PositionType.NONE:
+                    # 【売建】建玉がなければ売建
+                    reward += self.position_open(action_type)
+                    # ゴールデン・クロス時のエントリに対するペナルティ
+                    # reward -= reward_cross_ma_golden
+                    # デッド・クロス時のエントリに対する報酬
+                    # reward += reward_cross_ma_dead
+                elif self.s.position == PositionType.LONG:
+                    # 【返済】買建（ロング）であれば（売って）返済
+                    reward += self.position_close()
+                else:
+                    raise RuntimeError("Trade rule violation!")
+            elif action_type == ActionType.HOLD:
+                if self.s.position == PositionType.NONE:
+                    # クロス・シグナルに応じた僅かなペナルティ
+                    # reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
+                    # denom = 1000.0
+                    # reward -= reward_sum / denom
+                    pass
+                else:
+                    # 【報酬・ペナルティ】
+                    # 含み益があれば幾分かを報酬に
+                    reward += self.s.get_reward_unrealized_profit()
             else:
-                raise RuntimeError("Trade rule violation!")
-        elif action_type == ActionType.SELL:
-            if self.s.position == PositionType.NONE:
-                # 【売建】建玉がなければ売建
-                reward += self.position_open(action_type)
-                # ゴールデン・クロス時のエントリに対するペナルティ
-                reward -= reward_cross_ma_golden
-                # デッド・クロス時のエントリに対する報酬
-                reward += reward_cross_ma_dead
-            elif self.s.position == PositionType.LONG:
-                # 【返済】買建（ロング）であれば（売って）返済
-                reward += self.position_close()
-            else:
-                raise RuntimeError("Trade rule violation!")
-        elif action_type == ActionType.HOLD:
-            if self.s.position == PositionType.NONE:
-                # クロス・シグナルに応じた僅かなペナルティ
-                reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
-                denom = 1000.0
-                reward -= reward_sum / denom
-            else:
-                # 【報酬・ペナルティ】
-                # 含み益があれば幾分かを報酬に
-                reward += self.s.get_reward_unrealized_profit()
-        else:
-            raise TypeError(f"Unknown ActionType: {action_type}!")
+                raise TypeError(f"Unknown ActionType: {action_type}!")
 
         # ====== エピソード終了判定 ======
         terminated = False  # Task finished (e.g., goal reached)

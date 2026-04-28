@@ -11,14 +11,18 @@ from structs.app_enum import PositionType
 
 @dataclass
 class EnvData:
+    # 学習用ティックデータのデータフレームで使用する列名
+    list_col_name = ["Time", "Price", "MA1", "MA2", "DiffMA", "VWAP", "DiffVWAP", "RSI", "Momentum", ]
+
     # ====== パラメータ ======
     # 売買系
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
-    # PERIOD_HOLD: int = 5  # 約定後に HOLD に固定する期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
+    PERIOD_RSI: int = 150  # RSIの期間
+    PERIOD_MOM: int = 300  # モメンタムの期間
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
     LOSSCUT_1: float = -25.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率
@@ -29,7 +33,7 @@ class EnvData:
     RATIO_PROFIT_CHANGE_HOLD: float = 0.0025  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
-    NUMERATOR_RECONTRACT: float = 3.0  # 約定後の最約定コスト
+    NUMERATOR_RECONTRACT: float = 1.0  # 約定後の最約定コスト
     # 学習用ティックデータの報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"
@@ -51,6 +55,8 @@ class EnvData:
     diff_ma: float = 0.0
     vwap: float = 0.0
     diff_vwap: float = 0.0
+    rsi: float = 0.0
+    mom: float = 0.0
     profit: float = 0.0  # 含み損益
     profit_max: float = 0.0  # 最大含み損益
     dd_ratio: float = 0.0  # ドローダウン比率
@@ -138,12 +144,14 @@ class EnvData:
         market = np.array(
             [
                 self.ma1 / self.price_open if self.price_open > 0 else 1.0,  # 1. MA1（短周期移動平均）
-                self.profit,  # 2. Profit（含み損益）
-                self.profit_max,  # 3. ProfitMax（最大含み損益）
-                self.n_trade,  # 4. n_trade（約定回数）
-                self.count_negative,  # 5. count_negative（含み損の継続カウンタ）
-                self.add_contract_cost(),  # 6. 約定コスト
-                self.dd_ratio,  # 7. dd_ratio（ドローダウン率）
+                self.ma2 / self.price_open if self.price_open > 0 else 1.0,  # 2. MA2（長周期移動平均）
+                self.mom, # 3. モメンタム
+                self.profit,  # 4. Profit（含み損益）
+                self.profit_max,  # 5. ProfitMax（最大含み損益）
+                self.n_trade,  # 6. n_trade（約定回数）
+                self.count_negative,  # 7. count_negative（含み損の継続カウンタ）
+                self.add_contract_cost(),  # 8. 約定コスト
+                self.dd_ratio,  # 9. dd_ratio（ドローダウン率）
             ],
             dtype=np.float32
         )
@@ -152,6 +160,7 @@ class EnvData:
             [
                 self.diff_ma,
                 self.diff_vwap,
+                self.rsi,
             ],
             dtype=np.float32
         )
@@ -225,6 +234,8 @@ class EnvData:
         self.diff_ma = row["DiffMA"]
         self.vwap = row["VWAP"]
         self.diff_vwap = row["DiffVWAP"]
+        self.rsi = row["RSI"]
+        self.mom = row["Momentum"]
 
     def set_data_open(self, row):
         self.ts_open = row["Time"]

@@ -79,7 +79,7 @@ if __name__ == "__main__":
     df_technical = pd.DataFrame(dict_technical)
     df_technical.index = [datetime.datetime.fromtimestamp(ts) for ts in df_technical["ts"]]
     df_technical.to_pickle("technical.pkl")
-    print(df_technical)
+    # print(df_technical)
 
     # ====== プロット ======
     # 念の為、銘柄コードが一つしか存在しないことを確認

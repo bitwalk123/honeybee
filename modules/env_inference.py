@@ -55,10 +55,8 @@ class InferenceEnv(TrainingEnv):
             return
 
         if action_type == ActionType.BUY:
-            self.s.reset_count_post_contract()
             self._handle_buy_action()
         elif action_type == ActionType.SELL:
-            self.s.reset_count_post_contract()
             self._handle_sell_action()
         else:
             raise TypeError(f"Unknown ActionType: {action_type}!")
@@ -69,8 +67,9 @@ class InferenceEnv(TrainingEnv):
             # ポジションなし → 買建
             self.position_open(ActionType.BUY)
         elif self.s.position == PositionType.SHORT:
-            # ショートポジション保有 → 買い返済
-            self.position_close()
+            if self._valid_repayment():
+                # ショートポジション保有 → 買い返済
+                self.position_close()
         else:
             # ロングポジション保有時に買いアクション → ルール違反
             raise RuntimeError("Trade rule violation: Cannot BUY while holding LONG position!")
@@ -81,11 +80,18 @@ class InferenceEnv(TrainingEnv):
             # ポジションなし → 売建
             self.position_open(ActionType.SELL)
         elif self.s.position == PositionType.LONG:
-            # ロングポジション保有 → 売り返済
-            self.position_close()
+            if self._valid_repayment():
+                # ロングポジション保有 → 売り返済
+                self.position_close()
         else:
             # ショートポジション保有時に売りアクション → ルール違反
             raise RuntimeError("Trade rule violation: Cannot SELL while holding SHORT position!")
+
+    def _valid_repayment(self) -> bool:
+        if 0 <= self.s.profit:
+            return False
+        else:
+            return True
 
     def step(self, action):
         """

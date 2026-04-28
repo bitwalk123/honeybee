@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from sb3_contrib import MaskablePPO
 from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+# from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+from stable_baselines3.common.vec_env import DummyVecEnv
 
 from funcs.excel import get_excel_sheet
 from modules.env_inference import InferenceEnv
@@ -102,8 +103,10 @@ class MyPPOAgent:
 
             # ====== 環境 ======
             # 3. DummyVecEnv Wrapper
-            env_dummy = DummyVecEnv([self.make_env_training])
+            # env_dummy = DummyVecEnv([self.make_env_training])
+            env_train = DummyVecEnv([self.make_env_training])
 
+            """
             # 4. VecNormalize Wrapper
             if env_train is None:
                 if os.path.exists(self.path_normalize):
@@ -135,6 +138,7 @@ class MyPPOAgent:
                 new_env.training = True
                 env_train = new_env
 
+            """
             if model is None:
                 # ====== モデル生成 ======
                 model = MaskablePPO(
@@ -175,14 +179,14 @@ class MyPPOAgent:
                     print("env_method failed:", ex)
 
         # VecNormalize の内部状態を保存
-        env_train.save(self.path_normalize)
+        # env_train.save(self.path_normalize)
         # print(f"VecNormalize is saved to {self.path_normalize}.")
 
         # モデルの保存
         model.save(self.path_model)
         print(f"model is saved to {self.path_model}.")
 
-        # env_train.close()
+        env_train.close()
 
     def infer(self, file_excel: str) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得
@@ -190,19 +194,26 @@ class MyPPOAgent:
 
         # ====== 学習後の推論用環境の準備 ======
         # 2. DummyVecEnv Wrapper
-        env_dummy = DummyVecEnv([self.make_env_inference])
+        # env_dummy = DummyVecEnv([self.make_env_inference])
+        env_infer = DummyVecEnv([self.make_env_inference])
 
+        """
         # 3. VecNormalize Wrapper
         if os.path.exists(self.path_normalize):
             env_infer = VecNormalize.load(
                 self.path_normalize,
                 env_dummy
             )  # 学習情報を読み込む
+            # VecNormalize.load の後に shape を検証
+            assert env_infer.observation_space == env_dummy.observation_space, \
+                "Observation space mismatch between training and inference!"
+
             env_infer.training = False
             env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
         else:
             print(f"{self.path_normalize} does not exist!")
             return {}, {}
+        """
 
         if os.path.exists(self.path_model):
             model = MaskablePPO.load(
@@ -218,17 +229,17 @@ class MyPPOAgent:
         # 特定環境を指定するインデックス
         idx = 0  # 環境は 1 つのみなので、インデックスは常に 0
 
+        # ====== 推論実施 ======
+        print("Begin inference...")
+        dict_result = dict()
+        dict_technical = defaultdict(list)
+
         # 環境のリセット
         obs = env_infer.reset()
         # assert env_inf.observation_space.contains(obs), "observation_space mismatch"
         # print(f"Initial observation:\n{obs}")
         episode_over = False
-        total_reward = 0
-
-        # ====== 推論実施 ======
-        print("Begin inference...")
-        dict_result = dict()
-        dict_technical = defaultdict(list)
+        # total_reward = 0
 
         info = []
         while not episode_over:
@@ -240,19 +251,18 @@ class MyPPOAgent:
             action, _states = model.predict(
                 obs,
                 action_masks=action_masks,
-                deterministic=True
+                deterministic=False
             )
             # 環境でステップ処理
-            action = np.array([action])  # VecEnv では複数環境分の配列
+            # action = np.array([action])  # VecEnv では複数環境分の配列
             obs, reward, done, info = env_infer.step(action)
             # print(obs, reward, done, info)
-            total_reward += reward[idx]
+            # total_reward += reward[idx]
             episode_over = done[idx]
             if "technical" in info[idx]:
                 d = info[idx]["technical"]
                 for key in d.keys():
                     dict_technical[key].append(d[key])
-
         else:
             dict_info = info[idx]
             # 取引結果を出力

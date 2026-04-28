@@ -18,7 +18,7 @@ class EnvData:
     # 売買系
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
-    PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
+    PERIOD_WARMUP: int = 450  # インジケータのウォームアップ期間（ティック数）
     PERIOD_MA_1: int = 90  # 移動平均線の期間1
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
     PERIOD_RSI: int = 150  # RSIの期間

@@ -375,16 +375,10 @@ class TrainingEnv(gym.Env):
         if flag_not_action_yet:
             # ====== 建玉管理 ======
             action_type = ActionType(action)
-            # reward_cross_ma_golden = self.get_reward_cross_ma_golden()
-            # reward_cross_ma_dead = self.get_reward_cross_ma_dead()
             if action_type == ActionType.BUY:
                 if self.s.position == PositionType.NONE:
                     # 【買建】建玉がなければ買建
                     reward += self.position_open(action_type)
-                    # ゴールデン・クロス時のエントリに対する報酬
-                    # reward += reward_cross_ma_golden
-                    # デッド・クロス時のエントリに対するペナルティ
-                    # reward -= reward_cross_ma_dead
                 elif self.s.position == PositionType.SHORT:
                     # 【返済】売建（ショート）であれば（買って）返済
                     reward += self.position_close()
@@ -394,10 +388,6 @@ class TrainingEnv(gym.Env):
                 if self.s.position == PositionType.NONE:
                     # 【売建】建玉がなければ売建
                     reward += self.position_open(action_type)
-                    # ゴールデン・クロス時のエントリに対するペナルティ
-                    # reward -= reward_cross_ma_golden
-                    # デッド・クロス時のエントリに対する報酬
-                    # reward += reward_cross_ma_dead
                 elif self.s.position == PositionType.LONG:
                     # 【返済】買建（ロング）であれば（売って）返済
                     reward += self.position_close()
@@ -405,10 +395,6 @@ class TrainingEnv(gym.Env):
                     raise RuntimeError("Trade rule violation!")
             elif action_type == ActionType.HOLD:
                 if self.s.position == PositionType.NONE:
-                    # クロス・シグナルに応じた僅かなペナルティ
-                    # reward_sum = reward_cross_ma_golden + reward_cross_ma_dead
-                    # denom = 1000.0
-                    # reward -= reward_sum / denom
                     pass
                 else:
                     # 【報酬・ペナルティ】

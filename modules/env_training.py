@@ -78,8 +78,8 @@ class TrainingEnv(gym.Env):
                     np.float32('inf'),  # 3. Momentum（モメンタム）
                     np.float32('inf'),  # 4. Profit（含み損益）
                     np.float32('inf'),  # 5. ProfitMax（最大含み損益）
-                    np.float32('inf'),  # 6. n_trade（約定回数）
-                    np.float32('inf'),  # 7. count_negative（含み損の継続カウンタ）
+                    np.float32(1),  # 6. n_trade（約定回数）
+                    np.float32(1),  # 7. count_negative（含み損の継続カウンタ）
                     np.float32(-self.s.COST_CONTRACT),  # 8. 約定コスト
                     np.float32('inf'),  # 9. dd_ratio（ドローダウン率）
                 ]),
@@ -337,6 +337,7 @@ class TrainingEnv(gym.Env):
         self.get_data()
         # 含み損益の取得
         self.s.profit = self.posman.getProfit(self.CODE, self.s.price)
+        self.s.update_profit_max() # 最大含み益の更新
         # 初期報酬
         reward = 0
         # 情報用辞書

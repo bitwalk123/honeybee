@@ -26,7 +26,7 @@ class EnvData:
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
     LOSSCUT_1: float = -25.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率
-    DD_THRESHOLD: float = 10.0  # ドローダウン利確の閾値
+    DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
     # 報酬系
     REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.025  # HOLD（建玉あり）時の含み損益からの報酬比率
@@ -89,11 +89,6 @@ class EnvData:
         PositionType.SHORT: MASK_SHORT,
     }
 
-    def does_take_profit(self) -> bool:
-        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
-            return True
-        else:
-            return False
 
     def inc_row(self):
         self.row += 1
@@ -145,11 +140,11 @@ class EnvData:
             [
                 self.ma1 / self.price_open if self.price_open > 0 else 1.0,  # 1. MA1（短周期移動平均）
                 self.ma2 / self.price_open if self.price_open > 0 else 1.0,  # 2. MA2（長周期移動平均）
-                self.mom, # 3. モメンタム
+                self.mom,  # 3. モメンタム
                 self.profit,  # 4. Profit（含み損益）
                 self.profit_max,  # 5. ProfitMax（最大含み損益）
-                self.n_trade,  # 6. n_trade（約定回数）
-                self.count_negative,  # 7. count_negative（含み損の継続カウンタ）
+                np.tanh(float(self.n_trade) / 100),  # 6. n_trade（約定回数）
+                np.tanh(float(self.count_negative) / self.N_MINUS_MAX),  # 7. count_negative（含み損の継続カウンタ）
                 self.add_contract_cost(),  # 8. 約定コスト
                 self.dd_ratio,  # 9. dd_ratio（ドローダウン率）
             ],
@@ -206,7 +201,7 @@ class EnvData:
             "vwap": self.vwap,
             "profit": self.profit,
             "profit_max": self.profit_max,
-            "dd_ratio": self.dd_ratio,
+            "dd_ratio": self.update_dd_ratio(),
             "diff_ma": self.diff_ma,
             "diff_vwap": self.diff_vwap,
             "n_trade": self.n_trade,
@@ -222,9 +217,6 @@ class EnvData:
 
     def reset_profit_pre(self):
         self.profit_pre = 0.0
-
-    def reset_profit_max(self):
-        self.profit_max = 0.0
 
     def set_data(self, row):
         self.ts = row["Time"]
@@ -257,20 +249,30 @@ class EnvData:
         self.dict_reward["ts"].append(self.ts)
         self.dict_reward["reward"].append(reward)
 
+    def reset_profit_max(self):
+        self.profit_max = 0.0
+
+    def update_profit_max(self):
+        """
+        含み損益の最大値を更新
+        :return:
+        """
+        if self.profit_max < self.profit:
+            self.profit_max = self.profit
+
     def update_dd_ratio(self) -> float:
-        if 0 <= self.profit:
-            if self.profit_max < self.profit:
-                self.profit_max = self.profit
-                self.dd_ratio = 0.0
-            elif 0 < self.profit_max:
-                # Drawdown Ratio
-                self.dd_ratio = (self.profit_max - self.profit) / self.profit_max
-            else:
-                self.dd_ratio = 0.0
+        if 0 < self.profit and 0 < self.profit_max:
+            self.dd_ratio = (self.profit_max - self.profit) / self.profit_max
         else:
             self.dd_ratio = 0.0
 
         return self.dd_ratio
+
+    def does_take_profit(self) -> bool:
+        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
+            return True
+        else:
+            return False
 
     def update_profit_pre(self):
         self.profit_pre = self.profit  # 一つ前の含み益の更新

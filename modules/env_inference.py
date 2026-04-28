@@ -103,6 +103,7 @@ class InferenceEnv(TrainingEnv):
         self.get_data()
         # 含み損益の取得
         self.s.profit = self.posman.getProfit(self.CODE, self.s.price)
+        self.s.update_profit_max() # 最大含み益の更新
         # 情報用辞書
         info = {}
 

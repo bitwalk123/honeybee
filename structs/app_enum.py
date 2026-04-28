@@ -1,18 +1,10 @@
-from enum import Enum, IntEnum
+from enum import IntEnum
 
 
-class ActionType(Enum):
+class ActionType(IntEnum):
     HOLD = 0
     BUY = 1
     SELL = 2
-
-
-"""
-class PositionType(Enum):
-    SHORT = -1
-    NONE = 0
-    LONG = 1
-"""
 
 
 class PositionType(IntEnum):

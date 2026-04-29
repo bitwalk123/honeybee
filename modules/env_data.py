@@ -28,13 +28,13 @@ class EnvData:
     DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率
     DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
     # 報酬系
-    REWARD_CROSS_ENTRY: float = 0.5  # クロス・シグナル時のエントリで報酬
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
     NUMERATOR_RECONTRACT: float = 1.0  # 約定後の最約定コスト
-    # 学習用ティックデータの報酬分布用の列名
+    REWARD_CROSS_ENTRY: float = 10.0  # クロス・シグナル時のエントリで報酬
+    # 学習用ティックデータのクロス・シグナル報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"
 

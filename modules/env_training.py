@@ -337,7 +337,7 @@ class TrainingEnv(gym.Env):
         self.get_data()
         # 含み損益の取得
         self.s.profit = self.posman.getProfit(self.CODE, self.s.price)
-        self.s.update_profit_max() # 最大含み益の更新
+        self.s.update_profit_max()  # 最大含み益の更新
         # 初期報酬
         reward = 0
         # 情報用辞書
@@ -377,11 +377,17 @@ class TrainingEnv(gym.Env):
 
         # if flag_not_action_yet:
         # ====== 建玉管理 ======
+        reward_dead = self.get_reward_cross_ma_dead()
+        reward_golden = self.get_reward_cross_ma_golden()
         action_type = ActionType(action)
         if action_type == ActionType.BUY:
             if self.s.position == PositionType.NONE:
                 # 【買建】建玉がなければ買建
                 reward += self.position_open(action_type)
+                # ゴールデン・クロスで買いなら報酬（報酬分布より）
+                reward += reward_golden
+                # デッド・クロスで買いならペナルティ（報酬分布より）
+                reward -= reward_dead
             elif self.s.position == PositionType.SHORT:
                 # 【返済】売建（ショート）であれば（買って）返済
                 reward += self.position_close()
@@ -391,6 +397,10 @@ class TrainingEnv(gym.Env):
             if self.s.position == PositionType.NONE:
                 # 【売建】建玉がなければ売建
                 reward += self.position_open(action_type)
+                # ゴールデン・クロスで売りならペナルティ（報酬分布より）
+                reward -= reward_golden
+                # デッド・クロスで売りなら報酬（報酬分布より）
+                reward += reward_dead
             elif self.s.position == PositionType.LONG:
                 # 【返済】買建（ロング）であれば（売って）返済
                 reward += self.position_close()

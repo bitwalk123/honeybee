@@ -398,7 +398,8 @@ class TrainingEnv(gym.Env):
                 raise RuntimeError("Trade rule violation!")
         elif action_type == ActionType.HOLD:
             if self.s.position == PositionType.NONE:
-                pass
+                # 何もしない時は微小の正負のノイズを報酬に加える
+                reward += (np.random.rand() - 0.5) / 1_000_000.0
             else:
                 # 【報酬・ペナルティ】
                 # 含み益があれば幾分かを報酬に

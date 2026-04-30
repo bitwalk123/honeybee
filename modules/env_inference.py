@@ -32,7 +32,7 @@ class InferenceEnv(TrainingEnv):
             return True
 
         # 3. 含み益→含み損ロスカット判定
-        if 5 < self.s.profit_max and self.s.profit < -10:
+        if 5 < self.s.profit_max and self.s.profit < -5:
             self.position_close_force(note="益→損ロスカット")
             return True
 
@@ -64,10 +64,11 @@ class InferenceEnv(TrainingEnv):
     def _handle_buy_action(self) -> None:
         """買いアクションの処理"""
         if self.s.position == PositionType.NONE:
-            # ポジションなし → 買建
-            self.position_open(ActionType.BUY)
+            if self.s.check_valid_entry(ActionType.BUY):  # エントリーの妥当性をチェック
+                # ポジションなし → 買建
+                self.position_open(ActionType.BUY)
         elif self.s.position == PositionType.SHORT:
-            if self._valid_repayment():
+            if self.s.check_valid_repayment():  # 返済の妥当性をチェック
                 # ショートポジション保有 → 買い返済
                 self.position_close()
         else:
@@ -77,21 +78,16 @@ class InferenceEnv(TrainingEnv):
     def _handle_sell_action(self) -> None:
         """売りアクションの処理"""
         if self.s.position == PositionType.NONE:
-            # ポジションなし → 売建
-            self.position_open(ActionType.SELL)
+            if self.s.check_valid_entry(ActionType.SELL):  # エントリーの妥当性をチェック
+                # ポジションなし → 売建
+                self.position_open(ActionType.SELL)
         elif self.s.position == PositionType.LONG:
-            if self._valid_repayment():
+            if self.s.check_valid_repayment():  # 返済の妥当性をチェック
                 # ロングポジション保有 → 売り返済
                 self.position_close()
         else:
             # ショートポジション保有時に売りアクション → ルール違反
             raise RuntimeError("Trade rule violation: Cannot SELL while holding SHORT position!")
-
-    def _valid_repayment(self) -> bool:
-        if 0 <= self.s.profit:
-            return False
-        else:
-            return True
 
     def step(self, action):
         """
@@ -103,7 +99,7 @@ class InferenceEnv(TrainingEnv):
         self.get_data()
         # 含み損益の取得
         self.s.profit = self.posman.getProfit(self.CODE, self.s.price)
-        self.s.update_profit_max() # 最大含み益の更新
+        self.s.update_profit_max()  # 最大含み益の更新
         # 情報用辞書
         info = {}
 

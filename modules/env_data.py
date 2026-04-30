@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from funcs.conv import position_to_onehot
-from structs.app_enum import PositionType
+from structs.app_enum import PositionType, ActionType
 
 
 @dataclass
@@ -89,6 +89,30 @@ class EnvData:
         PositionType.SHORT: MASK_SHORT,
     }
 
+    def check_valid_entry(self, type_action: ActionType) -> bool:
+        """
+        アクションの妥当性をチェック
+        :param type_action:
+        :return:
+        """
+        if type_action == ActionType.BUY:
+            if 0 <= self.diff_ma < 0.01:
+                return True
+            else:
+                return False
+        elif type_action == ActionType.SELL:
+            if -0.01 < self.diff_ma <= 0:
+                return True
+            else:
+                return False
+        else:
+            raise TypeError(f"Unknown ActionType: {type_action}!")
+
+    def check_valid_repayment(self) -> bool:
+        if 0 < self.profit:
+            return False
+        else:
+            return True
 
     def inc_row(self):
         self.row += 1

@@ -88,13 +88,13 @@ class TrainingEnv(gym.Env):
             ),
             "cross": spaces.Box(
                 low=np.array([
-                    np.float32(-1),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
-                    np.float32(-1),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+                    np.float32(-5),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
+                    np.float32(-5),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
                     np.float32(0),  # 3. RSI
                 ]),
                 high=np.array([
-                    np.float32(1),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
-                    np.float32(1),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
+                    np.float32(5),  # 1. DiffMA（乖離率 : (MA1 - MA2) / MA2）
+                    np.float32(5),  # 2. DiffVWAP（乖離率 : (MA1 - VWAP) / VWAP）
                     np.float32(1),  # 3. RSI
                 ]),
                 shape=(3,),

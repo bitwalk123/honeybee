@@ -1,3 +1,7 @@
+"""
+全ティックデータで推論して
+全体のパフォーマンスを確認するプログラム
+"""
 import datetime
 import glob
 import os
@@ -7,23 +11,9 @@ from collections import defaultdict
 import pandas as pd
 
 from funcs.plot import plot_performance
+from funcs.rl import get_transaction
 from funcs.tide import get_dt_from_excel
 from modules.agent import MyPPOAgent
-
-
-def get_transaction(f: str, r: dict, d: dict) -> None:
-    df = r["transaction"]
-    print(df)
-    filename = os.path.basename(f)
-    pnl = df["損益"].sum()
-    n_contract = len(df)
-    print(f"{filename}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")
-
-    d["file"].append(filename)
-    d["code"].append(code)
-    d["pnl"].append(pnl)
-    d["contracts"].append(n_contract)
-
 
 if __name__ == "__main__":
     # 銘柄コード
@@ -64,7 +54,7 @@ if __name__ == "__main__":
     for file_excel in list_excel:
         dict_result, dict_technical = agent.infer(file_excel)
         if "transaction" in dict_result:
-            get_transaction(file_excel, dict_result, dict_transaction)
+            get_transaction(code, file_excel, dict_result, dict_transaction)
 
     # 最後の取引明細を保存
     df_trans_last = dict_result["transaction"]

@@ -14,7 +14,7 @@ from funcs.plot import (
     plot_profit,
 )
 from funcs.tide import get_tse_x_range
-from modules.agent import MyPPOAgent
+from modules.agent import PPOAgent
 
 
 class Cricket:
@@ -29,7 +29,7 @@ class Cricket:
         # TensorBoard 用ログ
         tb_logs = "./tb_logs/"
         # エージェントのインスタンス生成
-        self.agent = MyPPOAgent(self.code, name_model, dir_logs, tb_logs)
+        self.agent = PPOAgent(self.code, name_model, dir_logs, tb_logs)
 
         # テクニカルデータを格納する辞書
         self.dict_technical = {}

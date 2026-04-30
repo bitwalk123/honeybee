@@ -5,7 +5,7 @@
 import glob
 import os
 
-from modules.agent import MyPPOAgent
+from modules.agent import PPOAgent
 
 if __name__ == "__main__":
     code = "9984"
@@ -19,7 +19,7 @@ if __name__ == "__main__":
     tb_logs = "./tb_logs/"
 
     # 学習用エージェント
-    agent = MyPPOAgent(code, name_model, dir_logs, tb_logs, flag_new=True)
+    agent = PPOAgent(code, name_model, dir_logs, tb_logs, flag_new=True)
 
     # 学習に使用するティックデータ
     home = os.path.expanduser("~")
@@ -28,7 +28,7 @@ if __name__ == "__main__":
     # list_excel = list_excel_all
 
     # 1 日あたりのエピソード
-    episodes_per_day = 1
+    episodes_per_day = 20
 
     # ティックデータ数 × episodes_per_day エピソード分のリストを作る
     list_excel_episode = list_excel * episodes_per_day

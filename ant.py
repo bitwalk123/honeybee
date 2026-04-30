@@ -13,7 +13,7 @@ import pandas as pd
 from funcs.plot import plot_performance
 from funcs.rl import get_transaction
 from funcs.tide import get_dt_from_excel
-from modules.agent import MyPPOAgent
+from modules.agent import PPOAgent
 
 if __name__ == "__main__":
     # 銘柄コード
@@ -26,7 +26,7 @@ if __name__ == "__main__":
     tb_logs = "./tb_logs/"
 
     # ====== 学習用エージェント ======
-    agent = MyPPOAgent(code, name_model, dir_logs, tb_logs)
+    agent = PPOAgent(code, name_model, dir_logs, tb_logs)
 
     # 学習に使用するティックデータ
     home = os.path.expanduser("~")

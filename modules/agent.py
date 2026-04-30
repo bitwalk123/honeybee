@@ -16,7 +16,7 @@ from modules.env_training import TrainingEnv
 from modules.agent_auxiliary import InfoCallback
 
 
-class MyPPOAgent:
+class PPOAgent:
     def __init__(
             self,
             code: str,

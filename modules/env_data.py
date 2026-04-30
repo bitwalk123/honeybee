@@ -15,7 +15,7 @@ class EnvData:
     list_col_name = ["Time", "Price", "MA1", "MA2", "DiffMA", "VWAP", "DiffVWAP", "RSI", "Momentum", ]
 
     # ====== パラメータ ======
-    # 売買系
+    # 約定回数系
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
     PERIOD_WARMUP: int = 450  # インジケータのウォームアップ期間（ティック数）
@@ -23,11 +23,12 @@ class EnvData:
     PERIOD_MA_2: int = 900  # 移動平均線の期間2
     PERIOD_RSI: int = 300  # RSIの期間
     PERIOD_MOM: int = 300  # モメンタムの期間
+    # ロスカット・利確系
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
     LOSSCUT_1: float = -25.0  # 単純ロスカット
-    DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率
+    DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率（これを超えたら利確）
     DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
-    # 報酬系
+    # 報酬・ペナルティ系
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
     COST_CONTRACT: float = 1.0  # 約定コスト（スリッページ相当）
@@ -47,29 +48,35 @@ class EnvData:
     pnl_total: float = 0  # エピソードにおける総報酬
     # dict_reward = defaultdict(list)  # 報酬保持用辞書 → 最後にデータフレーム化
     dict_reward: dict = field(default_factory=lambda: defaultdict(list))
-
+    # ティックデータ
     ts: float = 0.0
     price: float = 0.0
+    # 移動平均
     ma1: float = 0.0
     ma2: float = 0.0
     diff_ma: float = 0.0
+    diff_ma_pre: float = 0.0
+    # VWAP
     vwap: float = 0.0
     diff_vwap: float = 0.0
-    rsi: float = 0.0
+    diff_vwap_pre: float = 0.0
+    # RSI
+    rsi: float = 0.5
+    rsi_pre: float = 0.5
+    # モメンタム
     mom: float = 0.0
+    mom_pre: float = 0.0
+    # 含み損益
     profit: float = 0.0  # 含み損益
     profit_max: float = 0.0  # 最大含み損益
+    profit_pre: float = 0.0  # 一つ前の含み損益
     dd_ratio: float = 0.0  # ドローダウン比率
-
+    # 始値
     ts_open: float = 0.0
     price_open: float = 0.0
     volume_open: float = 0.0
-    # diff_ma_pre: float = 0.0
-    # diff_vwap_pre: float = 0.0
-    profit_pre: float = 0.0  # 一つ前の含み損益
-
     # フラグ関連
-    flag_losscut_consecutive: bool = False
+    flag_losscut_consecutive: bool = False  # 連続含み損ロスカットフラグ
 
     # ====== マスク処理関連 ======
     MASK_HOLD_ONLY = np.array([True, False, False], dtype=np.bool_)
@@ -95,13 +102,21 @@ class EnvData:
         :param type_action:
         :return:
         """
+        range_cross_vwap: float = 0.25  # VWAPクロスでエントリする許容範囲
+        range_cross_ma: float = 0.25  # MAクロスでエントリする許容範囲
         if type_action == ActionType.BUY:
-            if 0 <= self.diff_ma < 0.01:
+            if 0 <= self.diff_vwap < range_cross_vwap and self.diff_vwap_pre < self.diff_vwap:
+                return True
+            elif 0 <= self.diff_ma < range_cross_ma and self.diff_ma_pre < self.diff_ma:
+                # ゴールデン・クロスとみなす
                 return True
             else:
                 return False
         elif type_action == ActionType.SELL:
-            if -0.01 < self.diff_ma <= 0:
+            if -range_cross_vwap < self.diff_vwap <= 0 and self.diff_vwap < self.diff_vwap_pre:
+                return True
+            elif -range_cross_ma < self.diff_ma <= 0 and self.diff_ma < self.diff_ma_pre:
+                # デッド・クロスとみなす
                 return True
             else:
                 return False
@@ -109,7 +124,7 @@ class EnvData:
             raise TypeError(f"Unknown ActionType: {type_action}!")
 
     def check_valid_repayment(self) -> bool:
-        if 0 < self.profit:
+        if -5 < self.profit:
             return False
         else:
             return True
@@ -272,6 +287,12 @@ class EnvData:
     def update_dict_reward(self, reward) -> None:
         self.dict_reward["ts"].append(self.ts)
         self.dict_reward["reward"].append(reward)
+
+    def update_feature_pre(self):
+        self.diff_ma_pre = self.diff_ma
+        self.diff_vwap_pre = self.diff_vwap
+        self.rsi_pre = self.rsi
+        self.mom_pre = self.mom
 
     def reset_profit_max(self):
         self.profit_max = 0.0

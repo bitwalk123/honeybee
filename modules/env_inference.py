@@ -130,6 +130,9 @@ class InferenceEnv(TrainingEnv):
             info["transaction"] = self.get_transaction_result()
             print(f"約定回数 : {self.s.n_trade}")
 
+        # 一つ前の特徴量の更新
+        self.s.update_feature_pre()
+
         # ====== 観測値（状態） ======
         obs = self.s.get_obs()
 

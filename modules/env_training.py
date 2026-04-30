@@ -441,6 +441,9 @@ class TrainingEnv(gym.Env):
         # 一つ前の含み益の更新
         self.s.update_profit_pre()
 
+        # 一つ前の特徴量の更新
+        self.s.update_feature_pre()
+
         # ====== 観測値（状態） ======
         obs = self.s.get_obs()
 

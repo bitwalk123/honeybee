@@ -53,7 +53,7 @@ class Cricket:
 
         df = pd.DataFrame(self.dict_technical)
         df.index = [datetime.datetime.fromtimestamp(ts) for ts in df["ts"]]
-        print(df)
+        # print(df)
 
         # プロットの x軸の範囲を算出（左右10分のマージン）
         dt_date, dt_left, dt_right = get_tse_x_range(df)

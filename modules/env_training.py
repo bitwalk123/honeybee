@@ -58,6 +58,8 @@ class TrainingEnv(gym.Env):
         1. SHORT
         2. NONE
         3. LONG
+        4. MA Golden Cross
+        5. MA Dead Cross
         """
         self.observation_space = spaces.Dict({
             "market": spaces.Box(
@@ -100,7 +102,7 @@ class TrainingEnv(gym.Env):
                 shape=(3,),
                 dtype=np.float32
             ),
-            "position": spaces.MultiBinary(3),  # one-hot
+            "position": spaces.MultiBinary(5),  # one-hot
         })
 
         # デバッグ用観測値
@@ -136,29 +138,34 @@ class TrainingEnv(gym.Env):
     def _prep_rewards(self):
         colname1 = self.s.COL_CROSS_MA_GOLDEN
         colname2 = self.s.COL_CROSS_MA_DEAD
+        for colname in [colname1, colname2]:
+            self.df_tick[colname] = 0
         n: int = len(self.df_tick)
         w: int = 120
         p: float = 5.0
         # クロス・ポイント
         diff_ma_pre: float | None = None
-        for r in range(n):
+        for r in range(n - 1):
             diff_ma = self.df_tick.at[r, "DiffMA"]
+            # 報酬付与は次のステップになる
+            # --- ゴールデン・クロス ---
             if diff_ma_pre is None:
-                self.df_tick.at[r, colname1] = 0.0
-            elif diff_ma_pre < 0 <= diff_ma:
-                self.df_tick.at[r, colname1] = p
+                self.df_tick.at[r + 1, colname1] = 0.0
+            elif diff_ma_pre <= 0 < diff_ma:
+                self.df_tick.at[r + 1, colname1] = p
             else:
-                self.df_tick.at[r, colname1] = 0.0
-
+                self.df_tick.at[r + 1, colname1] = 0.0
+            # --- デッド・クロス ---
             if diff_ma_pre is None:
-                self.df_tick.at[r, colname2] = 0.0
-            elif diff_ma <= 0 < diff_ma_pre:
-                self.df_tick.at[r, colname2] = p
+                self.df_tick.at[r + 1, colname2] = 0.0
+            elif diff_ma < 0 <= diff_ma_pre:
+                self.df_tick.at[r + 1, colname2] = p
             else:
-                self.df_tick.at[r, colname2] = 0.0
+                self.df_tick.at[r + 1, colname2] = 0.0
 
             diff_ma_pre = diff_ma
 
+        """
         # クロス・ポイント前後
         for r in range(n):
             v1 = self.df_tick.at[r, colname1]
@@ -183,10 +190,11 @@ class TrainingEnv(gym.Env):
                     if r_post < n - 1:
                         # クロスを超えたら急峻に
                         self.df_tick.at[r_post, colname2] += p / denom / denom
+        """
 
         # トレーニング用データの保存
-        # print("特徴量などを追加したデータを保存しました。")
-        # self.df_tick.to_csv("traning_data.csv")
+        print("特徴量などを追加したデータを保存しました。")
+        self.df_tick.to_csv("traning_data.csv")
 
     def action_masks(self) -> np.ndarray:
         """
@@ -321,7 +329,10 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         cross = np.array([0, 0, 0], dtype=np.float32)
-        position = position_to_onehot(self.s.position).astype(np.float32)
+        position = np.concatenate([
+            position_to_onehot(self.s.position).astype(np.float32),
+            np.array([False, False], dtype=np.float32)
+        ])
         obs = {"market": market, "cross": cross, "position": position}
 
         info = {}  # Additional debug info

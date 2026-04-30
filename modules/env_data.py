@@ -199,7 +199,10 @@ class EnvData:
             dtype=np.float32
         )
 
-        position = position_to_onehot(self.position).astype(np.float32)
+        position = np.concatenate([
+                position_to_onehot(self.position).astype(np.float32),
+                self.get_obs_cross()
+        ])
         obs = {
             "market": market,
             "cross": cross,
@@ -321,3 +324,36 @@ class EnvData:
 
     def update_profit_pre(self):
         self.profit_pre = self.profit  # 一つ前の含み益の更新
+
+    def is_ma_golden_cross(self) -> bool:
+        """
+        ゴールデン・クロスでエントリか
+        :return:
+        """
+        if self.diff_ma_pre <= 0 < self.diff_ma:
+            return True
+        else:
+            return False
+
+    def is_ma_dead_cross(self) -> bool:
+        """
+        ゴールデン・クロスでエントリか
+        :return:
+        """
+        if self.diff_ma < 0 <= self.diff_ma_pre:
+            return True
+        else:
+            return False
+
+    def get_obs_cross(self) -> np.ndarray:
+        """
+        クロス関連の特徴量をまとめて取得
+        :return:
+        """
+        return np.array(
+            [
+                self.is_ma_golden_cross(),
+                self.is_ma_dead_cross()
+            ],
+            dtype=np.float32
+        )

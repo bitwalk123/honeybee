@@ -25,10 +25,9 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_excel = sorted(glob.glob(path_excel))
-    # list_excel = list_excel_all
 
     # 1 日あたりのエピソード
-    episodes_per_day = 20
+    episodes_per_day = 10
 
     # ティックデータ数 × episodes_per_day エピソード分のリストを作る
     list_excel_episode = list_excel * episodes_per_day

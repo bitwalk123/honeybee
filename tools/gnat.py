@@ -78,7 +78,7 @@ class Gnat:
 
         # 株価
         i = 0
-        title = f"{dt_date} : {self.code} の推論パフォーマンス"
+        title = f"{dt_date} : {self.code} ─ 疑似モデルのパフォーマンス"
         ax[i].set_xlim(dt_left, dt_right)
         plot_main(ax[i], df, title)
 

@@ -6,7 +6,7 @@ from gymnasium import spaces
 from funcs.conv import position_to_onehot
 from modules.env_data import EnvData
 from modules.posman import PositionManager
-from modules.technical import MovingAverage, VWAP, RSI, Momentum
+from modules.technical import MovingAverage, VWAP, RSI, Momentum, EMA
 from structs.app_enum import ActionType, PositionType
 
 
@@ -110,7 +110,8 @@ class TrainingEnv(gym.Env):
 
     def _prep_observations(self):
         # 短周期移動平均 MA1
-        ma1 = MovingAverage(window_size=self.s.PERIOD_MA_1)
+        # ma1 = MovingAverage(window_size=self.s.PERIOD_MA_1)
+        ma1 = EMA(window_size=self.s.PERIOD_MA_1)
         self.df_tick["MA1"] = [ma1.update(p) for p in self.df_tick["Price"]]
 
         # 長周期移動平均 MA2

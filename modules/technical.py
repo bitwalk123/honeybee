@@ -258,3 +258,36 @@ class Momentum:
         self.momentum = self.queue[-1] - self.queue[0]
 
         return self.momentum
+
+
+class EMA:
+    """
+    リアルタイム用の指数平滑移動平均 (Exponential Moving Average, EMA)
+    """
+
+    def __init__(self, window_size: int):
+        self.alpha: float = 2 / (window_size + 1)
+        self.ema: Optional[float] = None
+
+    def clear(self) -> None:
+        self.ema = None
+
+    def getValue(self) -> float:
+        """
+        現在の EMA 値を返す。
+        未初期化の場合は 0.0 を返す（None を返さない保証）。
+        """
+        return self.ema if self.ema is not None else 0.0
+
+    def update(self, value: float) -> float:
+        """
+        新しい値で EMA を更新し、常に float を返す。
+        """
+        if self.ema is None:
+            # 初期 EMA は最初の値をそのまま採用
+            self.ema = value
+        else:
+            # 再帰式
+            self.ema += self.alpha * (value - self.ema)
+
+        return self.ema

@@ -32,7 +32,7 @@ class InferenceEnv(TrainingEnv):
             return True
 
         # 3. 含み益→含み損ロスカット判定
-        if 0 < self.s.profit_max and self.s.profit < -25:
+        if 0 < self.s.profit_max and self.s.profit < self.s.LOSSCUT_1 / 2.0:
             self.position_close_force(note="益→損ロスカット")
             return True
 

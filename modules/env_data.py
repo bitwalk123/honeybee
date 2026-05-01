@@ -25,7 +25,7 @@ class EnvData:
     PERIOD_MOM: int = 300  # モメンタムの期間
     # ロスカット・利確系
     N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
-    LOSSCUT_1: float = -100.0  # 単純ロスカット
+    LOSSCUT_1: float = -50.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
     DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
     # 報酬・ペナルティ系

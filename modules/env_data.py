@@ -102,20 +102,18 @@ class EnvData:
         :param type_action:
         :return:
         """
-        range_cross_vwap: float = 0.25  # VWAPクロスでエントリする許容範囲
-        range_cross_ma: float = 0.25  # MAクロスでエントリする許容範囲
         if type_action == ActionType.BUY:
-            if 0 <= self.diff_vwap < range_cross_vwap and self.diff_vwap_pre < self.diff_vwap:
+            if 0 <= self.diff_vwap and self.diff_vwap_pre < self.diff_vwap:
                 return True
-            elif 0 <= self.diff_ma < range_cross_ma and self.diff_ma_pre < self.diff_ma:
+            elif 0 <= self.diff_ma and self.diff_ma_pre < self.diff_ma:
                 # ゴールデン・クロスとみなす
                 return True
             else:
                 return False
         elif type_action == ActionType.SELL:
-            if -range_cross_vwap < self.diff_vwap <= 0 and self.diff_vwap < self.diff_vwap_pre:
+            if self.diff_vwap <= 0 and self.diff_vwap < self.diff_vwap_pre:
                 return True
-            elif -range_cross_ma < self.diff_ma <= 0 and self.diff_ma < self.diff_ma_pre:
+            elif self.diff_ma <= 0 and self.diff_ma < self.diff_ma_pre:
                 # デッド・クロスとみなす
                 return True
             else:

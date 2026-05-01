@@ -15,7 +15,7 @@ from funcs.plot import (
 )
 from funcs.tide import get_tse_x_range
 
-from agent_algo import AlgoAgent
+from modules.agent_algo import AlgoAgent
 
 
 class Gnat:

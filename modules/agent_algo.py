@@ -9,7 +9,6 @@ class AlgoAgent:
     def __init__(self, code: str, ) -> None:
         self.code: str = code
 
-
     def infer(self, file_excel: str) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得
         df = get_excel_sheet(file_excel, self.code)
@@ -26,7 +25,8 @@ class AlgoAgent:
         dict_technical = defaultdict(list)
 
         # 環境のリセット
-        obs = env.reset()
+        obs, _ = env.reset()
+        # print(obs)
         episode_over = False
 
         info = []

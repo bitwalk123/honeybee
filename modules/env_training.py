@@ -193,8 +193,8 @@ class TrainingEnv(gym.Env):
         """
 
         # トレーニング用データの保存
-        print("特徴量などを追加したデータを保存しました。")
-        self.df_tick.to_csv("traning_data.csv")
+        # print("特徴量などを追加したデータを保存しました。")
+        # self.df_tick.to_csv("traning_data.csv")
 
     def action_masks(self) -> np.ndarray:
         """
@@ -449,14 +449,14 @@ class TrainingEnv(gym.Env):
             info["reward"] = self.s.get_reward()
             print(f"約定回数 : {self.s.n_trade}")
 
+        # ====== 観測値（状態） ======
+        obs = self.s.get_obs()
+
         # 一つ前の含み益の更新
         self.s.update_profit_pre()
 
         # 一つ前の特徴量の更新
         self.s.update_feature_pre()
-
-        # ====== 観測値（状態） ======
-        obs = self.s.get_obs()
 
         # ステップ（データフレームの行）更新
         self.s.inc_row()

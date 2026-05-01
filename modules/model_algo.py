@@ -17,5 +17,8 @@ class AlgoModel:
         """
         return masks[action] == 1
 
-    def predict(self, obj:dict, action_masks: np.ndarray) -> tuple[int, dict]:
+    def predict(self, dict_obs, action_masks: np.ndarray) -> tuple[int, dict]:
+        list_signal = dict_obs["position"]
+        if list_signal[3] == 1.0 or list_signal[4] == 1.0:
+            print(list_signal)
         return ActionType.HOLD.value, {}

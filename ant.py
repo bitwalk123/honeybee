@@ -31,7 +31,7 @@ if __name__ == "__main__":
     # 学習に使用するティックデータ
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
-    list_excel = sorted(glob.glob(path_excel))
+    list_excel = sorted(glob.glob(path_excel))[-1:]
 
     # 推論に渡すExcelリストが確かにリストになっているか確認
     if type(list_excel) is not list:

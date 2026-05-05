@@ -103,42 +103,8 @@ class PPOAgent:
 
             # ====== 環境 ======
             # 3. DummyVecEnv Wrapper
-            # env_dummy = DummyVecEnv([self.make_env_training])
             env_train = DummyVecEnv([self.make_env_training])
 
-            """
-            # 4. VecNormalize Wrapper
-            if env_train is None:
-                if os.path.exists(self.path_normalize):
-                    env_train = VecNormalize.load(self.path_normalize, env_dummy)
-                    env_train.training = True
-                    env_train.norm_reward = True
-                    env_train.norm_obs = True
-                else:
-                    env_train = VecNormalize(
-                        env_dummy,
-                        norm_obs=True,
-                        norm_reward=True,
-                        norm_obs_keys=["market"]
-                    )
-            else:
-                # 2 回目以降は環境だけ差し替える
-                # env_train.set_venv(env_dummy)
-                # 2回目以降：新しい VecNormalize を作り直す
-                new_env = VecNormalize(
-                    env_dummy,
-                    norm_obs=True,
-                    norm_reward=True,
-                    norm_obs_keys=["market"]
-                )
-                new_env.obs_rms = env_train.obs_rms
-                new_env.ret_rms = env_train.ret_rms
-                new_env.clip_obs = env_train.clip_obs
-                new_env.clip_reward = env_train.clip_reward
-                new_env.training = True
-                env_train = new_env
-
-            """
             if model is None:
                 # ====== モデル生成 ======
                 model = MaskablePPO(
@@ -178,10 +144,6 @@ class PPOAgent:
                 except Exception as ex:
                     print("env_method failed:", ex)
 
-        # VecNormalize の内部状態を保存
-        # env_train.save(self.path_normalize)
-        # print(f"VecNormalize is saved to {self.path_normalize}.")
-
         # モデルの保存
         model.save(self.path_model)
         print(f"model is saved to {self.path_model}.")
@@ -194,26 +156,7 @@ class PPOAgent:
 
         # ====== 学習後の推論用環境の準備 ======
         # 2. DummyVecEnv Wrapper
-        # env_dummy = DummyVecEnv([self.make_env_inference])
         env_infer = DummyVecEnv([self.make_env_inference])
-
-        """
-        # 3. VecNormalize Wrapper
-        if os.path.exists(self.path_normalize):
-            env_infer = VecNormalize.load(
-                self.path_normalize,
-                env_dummy
-            )  # 学習情報を読み込む
-            # VecNormalize.load の後に shape を検証
-            assert env_infer.observation_space == env_dummy.observation_space, \
-                "Observation space mismatch between training and inference!"
-
-            env_infer.training = False
-            env_infer.norm_reward = False  # 推論時は報酬正規化を無効化
-        else:
-            print(f"{self.path_normalize} does not exist!")
-            return {}, {}
-        """
 
         if os.path.exists(self.path_model):
             model = MaskablePPO.load(

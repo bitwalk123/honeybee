@@ -102,7 +102,8 @@ class TrainingEnv(gym.Env):
                 shape=(3,),
                 dtype=np.float32
             ),
-            "position": spaces.MultiBinary(5),  # one-hot
+            "signal": spaces.MultiBinary(2),  # signal
+            "position": spaces.MultiBinary(3),  # one-hot
         })
 
         # デバッグ用観測値
@@ -330,11 +331,10 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         cross = np.array([0, 0, 0], dtype=np.float32)
-        position = np.concatenate([
-            position_to_onehot(self.s.position).astype(np.float32),
-            np.array([False, False], dtype=np.float32)
-        ])
-        obs = {"market": market, "cross": cross, "position": position}
+        signal = np.array([False, False], dtype=np.float32)
+        position = position_to_onehot(self.s.position)
+        obs = {"market": market, "cross": cross, "signal": signal, "position": position}
+        print(obs)
 
         info = {}  # Additional debug info
         return obs, info

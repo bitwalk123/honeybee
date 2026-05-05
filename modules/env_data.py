@@ -26,10 +26,11 @@ class EnvData:
     PERIOD_MOM: int = 300  # モメンタムの期間
     # ロスカット・利確系
     N_MINUS_MAX: int = 600  # 連続含み損の最大カウント数
-    N_POSITION_MIN: int = 300 # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
-    LOSSCUT_1: float = -100.0  # 単純ロスカット
-    DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
+    N_POSITION_MIN: int = 300  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
+    LOSSCUT_1: float = -50.0  # 単純ロスカット
+    # DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
     DD_THRESHOLD: float = 20.0  # ドローダウン利確を始める閾値
+
     # 報酬・ペナルティ系
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
@@ -37,6 +38,7 @@ class EnvData:
     NUMERATOR_TERMINATION: float = 1.e3  # 早期終了時のペナルティ（分子/ステップ数）
     NUMERATOR_RECONTRACT: float = 1.0  # 約定後の最約定コスト
     REWARD_CROSS_ENTRY: float = 10.0  # クロス・シグナル時のエントリで報酬
+
     # 学習用ティックデータのクロス・シグナル報酬分布用の列名
     COL_CROSS_MA_GOLDEN: str = "cross_ma_golden"
     COL_CROSS_MA_DEAD: str = "cross_ma_dead"
@@ -378,7 +380,7 @@ class EnvData:
         return self.dd_ratio
 
     def does_take_profit(self) -> bool:
-        #if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
+        # if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
         if self.DD_THRESHOLD < self.profit and self.DD_THRESHOLD / self.profit_max < self.update_dd_ratio():
             return True
         else:

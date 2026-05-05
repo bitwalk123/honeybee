@@ -100,6 +100,23 @@ class EnvData:
         PositionType.SHORT: MASK_SHORT,
     }
 
+    def print_param(self):
+        # ====== パラメータ ======
+        # 約定回数系
+        print("MAX_TRADE", self.MAX_TRADE)  # 約定数上限（仮）
+        # インジケータ系
+        print("PERIOD_WARMUP", self.PERIOD_WARMUP)  # インジケータのウォームアップ期間（ティック数）
+        print("PERIOD_MA_1", self.PERIOD_MA_1)  # 移動平均線の期間1
+        print("PERIOD_MA_2", self.PERIOD_MA_2)  # 移動平均線の期間2
+        print("PERIOD_RSI", self.PERIOD_RSI)  # RSIの期間
+        print("PERIOD_MOM", self.PERIOD_MOM)  # モメンタムの期間
+        # ロスカット・利確系
+        print("N_MINUS_MAX", self.N_MINUS_MAX)  # 連続含み損の最大カウント数
+        print("N_POSITION_MIN", self.N_POSITION_MIN)  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
+        print("LOSSCUT_1", self.LOSSCUT_1)  # 単純ロスカット
+        # DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
+        print("DD_THRESHOLD", self.DD_THRESHOLD)  # ドローダウン利確を始める閾値
+
     def check_valid_entry(self, type_action: ActionType) -> bool:
         """
         アクションの妥当性をチェック

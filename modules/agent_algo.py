@@ -9,12 +9,12 @@ class AlgoAgent:
     def __init__(self, code: str, ) -> None:
         self.code: str = code
 
-    def infer(self, file_excel: str) -> tuple:
+    def infer(self, file_excel: str, dict_setting: dict | None = None) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得
         df = get_excel_sheet(file_excel, self.code)
 
         # 1. 環境クラス継承の推論用環境クラスのインスタンス
-        env = InferenceEnv(self.code, df)
+        env = InferenceEnv(self.code, df, dict_setting)
 
         # 2. アルゴリズム・モデル
         model = AlgoModel()
@@ -26,7 +26,6 @@ class AlgoAgent:
 
         # 環境のリセット
         obs, _ = env.reset()
-        # print(obs)
         episode_over = False
 
         info = []

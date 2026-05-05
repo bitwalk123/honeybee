@@ -5,8 +5,8 @@ from structs.app_enum import ActionType, PositionType
 
 
 class InferenceEnv(TrainingEnv):
-    def __init__(self, code: str, df_tick: pd.DataFrame, render_mode=None) -> None:
-        super().__init__(code, df_tick, render_mode)
+    def __init__(self, code: str, df_tick: pd.DataFrame, dict_setting: dict | None = None, render_mode=None) -> None:
+        super().__init__(code, df_tick, dict_setting, render_mode)
 
     def _execute_forced_close_if_needed(self) -> bool:
         """

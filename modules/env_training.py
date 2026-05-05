@@ -14,14 +14,18 @@ class TrainingEnv(gym.Env):
     # metadata defines render modes and framerate
     metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 30}
 
-    def __init__(self, code: str, df_tick: pd.DataFrame, render_mode=None) -> None:
+    def __init__(self, code: str, df_tick: pd.DataFrame, dict_setting: dict | None = None, render_mode=None) -> None:
         super().__init__()
         self.CODE: str = code  # 銘柄コード
         self.df_tick: pd.DataFrame = df_tick
+        self.dict_setting = dict_setting
         self.render_mode = render_mode
 
         # データクラスのインスタンスを定義
-        self.s = EnvData()
+        if self.dict_setting is None:
+            self.s = EnvData()
+        else:
+            self.s = EnvData(**self.dict_setting)
         self.get_data_open()  # 始値の取得
 
         # ====== データフレームに必要な観測値を追加 ======
@@ -250,7 +254,13 @@ class TrainingEnv(gym.Env):
         :return:
         """
         # データクラスのインスタンスを再定義
-        self.s = EnvData()
+        if self.dict_setting is None:
+            self.s = EnvData()
+        else:
+            self.s = EnvData(**self.dict_setting)
+
+        # パラメータの標準出力
+        self.s.print_param()
 
         # ポジション・マネージャのリセットと初期化
         self.posman.reset()

@@ -20,11 +20,14 @@ from modules.agent_algo import AlgoAgent
 
 
 class Gnat:
-    def __init__(self):
+    def __init__(self, dict_setting: dict):
+        self.dict_setting = dict_setting
         # 銘柄コード
         self.code = "9984"
         # エージェントのインスタンス生成
         self.agent = AlgoAgent(self.code)
+
+        self.file_excel: str = ""
 
         # テクニカルデータを格納する辞書
         self.dict_technical = {}
@@ -32,10 +35,12 @@ class Gnat:
         self.list_cols = ['注文番号', '銘柄コード', '売買', '約定単価', '約定数量', '損益', '備考']
 
     def run(self, file_excel: str):
+        self.file_excel = file_excel
         # ====== 推論 ======
         # テクニカルデータを格納する辞書
-        self.dict_result, self.dict_technical = self.agent.infer(file_excel)
-        self.show_transaction(file_excel)
+        self.dict_result, self.dict_technical = self.agent.infer(file_excel, self.dict_setting)
+        # self.show_transaction()
+        return self.dict_result, self.dict_technical
 
     def plot(self):
         df_trans = self.dict_result["transaction"]
@@ -48,7 +53,6 @@ class Gnat:
 
         df = pd.DataFrame(self.dict_technical)
         df.index = [datetime.datetime.fromtimestamp(ts) for ts in df["ts"]]
-        # print(df)
 
         # プロットの x軸の範囲を算出（左右10分のマージン）
         dt_date, dt_left, dt_right = get_tse_x_range(df)
@@ -106,10 +110,10 @@ class Gnat:
         plt.savefig(output)
         plt.show()
 
-    def show_transaction(self, f: str):
+    def show_transaction(self):
         df = self.dict_result["transaction"]
         pnl = df["損益"].sum()
         n_contract = len(df)
         # 取引結果を標準出力
         print(df)
-        print(f"{os.path.basename(f)}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")
+        print(f"{os.path.basename(self.file_excel)}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")

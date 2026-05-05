@@ -255,7 +255,7 @@ class EnvData:
 
     def is_ma_golden_cross(self) -> bool:
         """
-        ゴールデン・クロスでエントリか
+        MA ゴールデン・クロスでエントリか
         :return:
         """
         if self.diff_ma_pre <= 0 < self.diff_ma:
@@ -265,10 +265,30 @@ class EnvData:
 
     def is_ma_dead_cross(self) -> bool:
         """
-        ゴールデン・クロスでエントリか
+        MA ゴールデン・クロスでエントリか
         :return:
         """
         if self.diff_ma < 0 <= self.diff_ma_pre:
+            return True
+        else:
+            return False
+
+    def is_vwap_golden_cross(self) -> bool:
+        """
+        VWAP ゴールデン・クロスでエントリか
+        :return:
+        """
+        if self.diff_vwap_pre <= 0 < self.diff_vwap:
+            return True
+        else:
+            return False
+
+    def is_vwap_dead_cross(self) -> bool:
+        """
+        VWAP ゴールデン・クロスでエントリか
+        :return:
+        """
+        if self.diff_vwap < 0 <= self.diff_vwap_pre:
             return True
         else:
             return False

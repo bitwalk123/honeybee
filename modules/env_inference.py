@@ -21,7 +21,7 @@ class InferenceEnv(TrainingEnv):
             bool: 強制決済を実行した場合True
         """
         # 1. 利確判定
-        if self.s.does_take_profit():
+        if self.s.does_take_profit() and self.s.N_POSITION_MIN < self.s.count_post_contract:
             self.position_close_force(note="ドローダウン利確")
             return True
 
@@ -32,6 +32,7 @@ class InferenceEnv(TrainingEnv):
             return True
 
         # 3. 含み益→含み損ロスカット判定
+        # if 0 < self.s.profit_max and self.s.profit < -self.s.profit_max:
         if 0 < self.s.profit_max and self.s.profit < self.s.LOSSCUT_1 / 2.0:
             self.position_close_force(note="益→損ロスカット")
             return True
@@ -133,13 +134,13 @@ class InferenceEnv(TrainingEnv):
         # ====== 観測値（状態） ======
         obs = self.s.get_obs()
 
+        # ====== テクニカル情報（分析用） ======
+        info["technical"] = self.s.get_technicals()
+
         # 一つ前の特徴量の更新
         self.s.update_feature_pre()
 
         # ステップ（データフレームの行）更新
         self.s.inc_row()
-
-        # ====== テクニカル情報（分析用） ======
-        info["technical"] = self.s.get_technicals()
 
         return obs, 0, terminated, truncated, info

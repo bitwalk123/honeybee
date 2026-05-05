@@ -1,3 +1,4 @@
+import datetime
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -18,16 +19,17 @@ class EnvData:
     # 約定回数系
     MAX_TRADE: int = 200  # 約定数上限（仮）
     # インジケータ系
-    PERIOD_WARMUP: int = 450  # インジケータのウォームアップ期間（ティック数）
+    PERIOD_WARMUP: int = 300  # インジケータのウォームアップ期間（ティック数）
     PERIOD_MA_1: int = 30  # 移動平均線の期間1
-    PERIOD_MA_2: int = 900  # 移動平均線の期間2
+    PERIOD_MA_2: int = 300  # 移動平均線の期間2
     PERIOD_RSI: int = 300  # RSIの期間
     PERIOD_MOM: int = 300  # モメンタムの期間
     # ロスカット・利確系
-    N_MINUS_MAX: int = 300  # 連続含み損の最大カウント数
-    LOSSCUT_1: float = -50.0  # 単純ロスカット
+    N_MINUS_MAX: int = 600  # 連続含み損の最大カウント数
+    N_POSITION_MIN: int = 300 # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
+    LOSSCUT_1: float = -100.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
-    DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
+    DD_THRESHOLD: float = 20.0  # ドローダウン利確を始める閾値
     # 報酬・ペナルティ系
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率
     RATIO_PROFIT_CHANGE_HOLD: float = 0.001  # HOLD（建玉あり）時の含み損益変化度からの報酬比率
@@ -199,7 +201,9 @@ class EnvData:
 
         signal = np.array([
             self.is_ma_golden_cross(),
-            self.is_ma_dead_cross()
+            self.is_ma_dead_cross(),
+            self.is_vwap_golden_cross(),
+            self.is_vwap_dead_cross(),
         ])
         position = position_to_onehot(self.position)
         obs = {
@@ -241,6 +245,7 @@ class EnvData:
             "ma1": self.ma1,
             "ma2": self.ma2,
             "vwap": self.vwap,
+            "momentum": self.mom,
             "profit": self.profit,
             "profit_max": self.profit_max,
             "dd_ratio": self.update_dd_ratio(),
@@ -259,16 +264,32 @@ class EnvData:
         :return:
         """
         if self.diff_ma_pre <= 0 < self.diff_ma:
+            '''
+            print(
+                "ゴールデン・クロス",
+                datetime.datetime.fromtimestamp(self.ts),
+                self.diff_ma_pre,
+                self.diff_ma,
+            )
+            '''
             return True
         else:
             return False
 
     def is_ma_dead_cross(self) -> bool:
         """
-        MA ゴールデン・クロスでエントリか
+        MA デッド・クロスでエントリか
         :return:
         """
         if self.diff_ma < 0 <= self.diff_ma_pre:
+            '''
+            print(
+                "デッド・クロス",
+                datetime.datetime.fromtimestamp(self.ts),
+                self.diff_ma_pre,
+                self.diff_ma,
+            )
+            '''
             return True
         else:
             return False
@@ -285,7 +306,7 @@ class EnvData:
 
     def is_vwap_dead_cross(self) -> bool:
         """
-        VWAP ゴールデン・クロスでエントリか
+        VWAP デッド・クロスでエントリか
         :return:
         """
         if self.diff_vwap < 0 <= self.diff_vwap_pre:
@@ -357,7 +378,8 @@ class EnvData:
         return self.dd_ratio
 
     def does_take_profit(self) -> bool:
-        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
+        #if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
+        if self.DD_THRESHOLD < self.profit and self.DD_THRESHOLD / self.profit_max < self.update_dd_ratio():
             return True
         else:
             return False

@@ -1,3 +1,4 @@
+# 疑似（アルゴリズム）モデル用
 import datetime
 import os
 
@@ -11,7 +12,7 @@ from funcs.plot import (
     plot_diff_ma,
     plot_diff_vwap,
     plot_main,
-    plot_profit,
+    plot_profit, plot_momentum,
 )
 from funcs.tide import get_tse_x_range
 
@@ -64,7 +65,7 @@ class Gnat:
 
         fig = plt.figure(figsize=(6.8, 6))
         ax = dict()
-        n = 4
+        n = 5
         gs = fig.add_gridspec(
             n, 1,
             wspace=0.0, hspace=0.0,
@@ -89,6 +90,10 @@ class Gnat:
         # VWAP乖離率
         i += 1
         plot_diff_vwap(ax[i], df)
+
+        # モメンタム
+        i += 1
+        plot_momentum(ax[i], df)
 
         # 含み損益
         i += 1

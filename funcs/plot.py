@@ -92,7 +92,20 @@ def plot_diff_vwap(ax, df):
     ax.set_ylabel("VWAP乖離率")
 
 
+def plot_momentum(ax, df):
+    '''
+    x = df.index
+    y1 = df["momentum"]
+    ax.fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")
+    ax.fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
+    '''
+    ax.plot(df["momentum"], linewidth=0.75, alpha=0.5, zorder=20)
+    ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylabel("モメンタム")
+
+
 def plot_profit(ax, df):
+    ax.plot(df["profit_max"], color="#c00", linewidth=0.5, zorder=30)
     x = df.index
     y1 = df["profit"]
     ax.fill_between(x, 0, y1, where=(0 < y1), fc="#fbb", ec="#f00", alpha=0.5, lw=0.5, zorder=20, label="含み益")

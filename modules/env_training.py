@@ -102,7 +102,7 @@ class TrainingEnv(gym.Env):
                 shape=(3,),
                 dtype=np.float32
             ),
-            "signal": spaces.MultiBinary(2),  # signal
+            "signal": spaces.MultiBinary(4),  # signal
             "position": spaces.MultiBinary(3),  # one-hot
         })
 
@@ -116,7 +116,8 @@ class TrainingEnv(gym.Env):
         self.df_tick["MA1"] = [ma1.update(p) for p in self.df_tick["Price"]]
 
         # 長周期移動平均 MA2
-        ma2 = MovingAverage(window_size=self.s.PERIOD_MA_2)
+        # ma2 = MovingAverage(window_size=self.s.PERIOD_MA_2)
+        ma2 = EMA(window_size=self.s.PERIOD_MA_2)
         self.df_tick["MA2"] = [ma2.update(p) for p in self.df_tick["Price"]]
 
         # 乖離度 (MA1 - MA2) / MA2
@@ -127,7 +128,7 @@ class TrainingEnv(gym.Env):
         self.df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(self.df_tick["Price"], self.df_tick["Volume"])]
 
         # 乖離度 (MA1 - VWAP) / VWAP
-        self.df_tick["DiffVWAP"] = (self.df_tick["MA1"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"] * 100.
+        self.df_tick["DiffVWAP"] = (self.df_tick["MA2"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"] * 100.
 
         # RSI
         rsi = RSI(window_size=self.s.PERIOD_RSI)
@@ -331,7 +332,7 @@ class TrainingEnv(gym.Env):
             dtype=np.float32
         )
         cross = np.array([0, 0, 0], dtype=np.float32)
-        signal = np.array([False, False], dtype=np.float32)
+        signal = np.array([False, False, False, False], dtype=np.float32)
         position = position_to_onehot(self.s.position)
         obs = {"market": market, "cross": cross, "signal": signal, "position": position}
         print(obs)
@@ -453,6 +454,11 @@ class TrainingEnv(gym.Env):
         # ====== 観測値（状態） ======
         obs = self.s.get_obs()
 
+        # ====== モデル報酬の保持（分析用） ======
+        self.s.update_dict_reward(reward)
+        # ====== テクニカル情報（分析用） ======
+        info["technical"] = self.s.get_technicals()
+
         # 一つ前の含み益の更新
         self.s.update_profit_pre()
 
@@ -461,10 +467,5 @@ class TrainingEnv(gym.Env):
 
         # ステップ（データフレームの行）更新
         self.s.inc_row()
-
-        # ====== モデル報酬の保持（分析用） ======
-        self.s.update_dict_reward(reward)
-        # ====== テクニカル情報（分析用） ======
-        info["technical"] = self.s.get_technicals()
 
         return obs, reward, terminated, truncated, info

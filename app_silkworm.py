@@ -12,5 +12,5 @@ if __name__ == "__main__":
     # 解析対象ファイル
     print("解析対象ファイル :", csv_result)
     df = pd.read_csv(csv_result)
-    obj = SilkWorm(df)
-    obj.mulreg()
+    obj = SilkWorm(name_doe, df)
+    obj.main_effect()

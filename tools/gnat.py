@@ -108,7 +108,6 @@ class Gnat:
         dir_output = os.path.join("screenshots", path_date)
         os.makedirs(dir_output, exist_ok=True)
         output = os.path.join(dir_output, "technical.png")
-        # print(output)
         plt.savefig(output)
         plt.show()
 

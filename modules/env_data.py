@@ -28,7 +28,7 @@ class EnvData:
     N_MINUS_MAX: int = 600  # 連続含み損の最大カウント数
     N_POSITION_MIN: int = 300  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
     LOSSCUT_1: float = -50.0  # 単純ロスカット
-    # DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
+    DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率（これを超えたら利確）
     DD_THRESHOLD: float = 20.0  # ドローダウン利確を始める閾値
 
     # 報酬・ペナルティ系
@@ -114,7 +114,7 @@ class EnvData:
         print("N_MINUS_MAX", self.N_MINUS_MAX)  # 連続含み損の最大カウント数
         print("N_POSITION_MIN", self.N_POSITION_MIN)  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
         print("LOSSCUT_1", self.LOSSCUT_1)  # 単純ロスカット
-        # DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
+        print("DD_RATIO_MAX", self.DD_RATIO_MAX)  # ドローダウン利確の最大比率（これを超えたら利確）
         print("DD_THRESHOLD", self.DD_THRESHOLD)  # ドローダウン利確を始める閾値
 
     def check_valid_entry(self, type_action: ActionType) -> bool:
@@ -397,8 +397,8 @@ class EnvData:
         return self.dd_ratio
 
     def does_take_profit(self) -> bool:
-        # if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
-        if self.DD_THRESHOLD < self.profit and self.DD_THRESHOLD / self.profit_max < self.update_dd_ratio():
+        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
+        # if self.DD_THRESHOLD < self.profit and max(0.5, self.DD_THRESHOLD / self.profit_max) < self.update_dd_ratio():
             return True
         else:
             return False

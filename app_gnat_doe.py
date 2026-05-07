@@ -8,7 +8,7 @@ import pandas as pd
 from tools.gnat import Gnat
 
 if __name__ == "__main__":
-    name_doe = "doe-001"
+    name_doe = "doe-002"
 
     dict_setting = {}
     df_doe = pd.read_csv(os.path.join("doe", name_doe, "doe.csv"))  # DOE条件のCSVファイルを読み込み

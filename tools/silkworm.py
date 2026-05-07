@@ -103,4 +103,5 @@ class SilkWorm:
 
         # 最後に DataFrame 化
         df_ranking = pd.DataFrame(rows)
-        print(df_ranking)
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print(df_ranking)

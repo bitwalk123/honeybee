@@ -39,10 +39,9 @@ class Gnat:
         # ====== 推論 ======
         # テクニカルデータを格納する辞書
         self.dict_result, self.dict_technical = self.agent.infer(file_excel, self.dict_setting)
-        # self.show_transaction()
         return self.dict_result, self.dict_technical
 
-    def plot(self):
+    def plot(self, path_date: str):
         df_trans = self.dict_result["transaction"]
         df_trans.index = [pd.to_datetime(t) for t in df_trans["注文日時"]]
         df_trans.index.name = "注文日時"
@@ -106,7 +105,10 @@ class Gnat:
         ax[i].set_xlabel(xlabel)
 
         plt.tight_layout()
-        output = "technical.png"
+        dir_output = os.path.join("screenshots", path_date)
+        os.makedirs(dir_output, exist_ok=True)
+        output = os.path.join(dir_output, "technical.png")
+        # print(output)
         plt.savefig(output)
         plt.show()
 
@@ -115,5 +117,7 @@ class Gnat:
         pnl = df["損益"].sum()
         n_contract = len(df)
         # 取引結果を標準出力
-        print(df)
+        with pd.option_context('display.max_rows', None, 'display.max_columns', None):
+            print(df)
+
         print(f"{os.path.basename(self.file_excel)}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")

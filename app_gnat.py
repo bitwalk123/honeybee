@@ -1,6 +1,7 @@
 # 疑似モデルを利用した推論（単一ファイル）
 import glob
 import os
+import re
 
 from tools.gnat import Gnat
 
@@ -12,9 +13,13 @@ if __name__ == "__main__":
     home = os.path.expanduser("~")
     path_excel = os.path.join(home, "MyProjects", "kabuto", "collection", "*.xlsx")
     list_file_excel = sorted(glob.glob(path_excel))
-    for file_excel in list_file_excel[:5]:
-        print("推論対象ファイル")
-        print(file_excel)
-        obj.run(file_excel)
-        #obj.plot()
-        obj.show_transaction()
+    file_excel = list_file_excel[-1]
+    print("推論対象ファイル")
+    print(file_excel)
+    obj.run(file_excel)
+    if m := re.search(r"(\d{4})(\d{2})(\d{2})", file_excel):
+        path_date = os.path.join(*m.groups())
+    else:
+        path_date = "0000/00/00"
+    obj.plot(path_date)
+    obj.show_transaction()

@@ -116,7 +116,8 @@ class Gnat:
         pnl = df["損益"].sum()
         n_contract = len(df)
         # 取引結果を標準出力
+        list_col = ["注文番号", "銘柄コード", "売買", "約定単価", "約定数量", "損益", "備考"]
         with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-            print(df)
+            print(df[list_col])
 
         print(f"{os.path.basename(self.file_excel)}, 損益 : {pnl} 円, 約定回数 : {n_contract} 回")

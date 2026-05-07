@@ -13,4 +13,6 @@ if __name__ == "__main__":
     print("解析対象ファイル :", csv_result)
     df = pd.read_csv(csv_result)
     obj = SilkWorm(name_doe, df)
-    obj.main_effect()
+    # obj.mulreg()
+    # obj.main_effect()
+    obj.ranking()

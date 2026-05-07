@@ -46,6 +46,7 @@ isoduration
 isort
 jedi
 Jinja2
+joblib
 json5
 jsonpointer
 jsonschema
@@ -100,6 +101,7 @@ pandas-stubs
 pandocfilters
 parso
 pathspec
+patsy
 pexpect
 pillow
 pip-chill
@@ -126,6 +128,7 @@ rfc3986-validator
 rfc3987-syntax
 rpds-py
 sb3_contrib
+scikit-learn
 scipy
 seaborn
 Send2Trash
@@ -135,10 +138,12 @@ sortedcontainers
 soupsieve
 stable_baselines3
 stack-data
+statsmodels
 sympy
 tensorboard
 tensorboard-data-server
 terminado
+threadpoolctl
 tinycss2
 torch
 tornado

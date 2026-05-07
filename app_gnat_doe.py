@@ -38,7 +38,7 @@ if __name__ == "__main__":
             # obj.plot()
             # obj.show_transaction()
             df_transaction = dict_result["transaction"]
-            df_result.loc[r2, "file"] = os.path.basename(file_excel)
+            df_result.loc[r2, "FILE"] = os.path.basename(file_excel)
             df_result.loc[r2, "pnl"] = df_transaction["損益"].sum()
             df_result.loc[r2, "contracts"] = len(df_transaction)
 

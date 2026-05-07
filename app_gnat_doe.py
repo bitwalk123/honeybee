@@ -35,8 +35,6 @@ if __name__ == "__main__":
             print("推論対象ファイル")
             print(file_excel)
             dict_result, dict_technical = obj.run(file_excel)
-            # obj.plot()
-            # obj.show_transaction()
             df_transaction = dict_result["transaction"]
             df_result.loc[r2, "file"] = os.path.basename(file_excel)
             df_result.loc[r2, "pnl"] = df_transaction["損益"].sum()

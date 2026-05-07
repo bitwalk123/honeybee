@@ -11,7 +11,11 @@ if __name__ == "__main__":
     name_doe = "doe-002"
 
     dict_setting = {}
-    df_doe = pd.read_csv(os.path.join("doe", name_doe, "doe.csv"))  # DOE条件のCSVファイルを読み込み
+    try:
+        df_doe = pd.read_csv(os.path.join("doe", name_doe, "doe.csv"))  # DOE条件のCSVファイルを読み込み
+    except FileNotFoundError:
+        print(f"DOE条件のCSVファイルが見つかりません: doe/{name_doe}/doe.csv")
+        sys.exit(1)
     csv_result = os.path.join("doe", name_doe, "result.csv")  # 結果用
     df_result = pd.DataFrame()
 

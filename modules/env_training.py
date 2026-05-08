@@ -132,7 +132,7 @@ class TrainingEnv(gym.Env):
         self.df_tick["VWAP"] = [vwap.update(p, v) for p, v in zip(self.df_tick["Price"], self.df_tick["Volume"])]
 
         # 乖離度 (MA1 - VWAP) / VWAP
-        self.df_tick["DiffVWAP"] = (self.df_tick["MA2"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"] * 100.
+        self.df_tick["DiffVWAP"] = (self.df_tick["MA1"] - self.df_tick["VWAP"]) / self.df_tick["VWAP"] * 100.
 
         # RSI
         rsi = RSI(window_size=self.s.PERIOD_RSI)

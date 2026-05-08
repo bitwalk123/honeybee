@@ -27,9 +27,9 @@ class EnvData:
     # ロスカット・利確系
     N_MINUS_MAX: int = 600  # 連続含み損の最大カウント数
     N_POSITION_MIN: int = 300  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
-    LOSSCUT_1: float = -50.0  # 単純ロスカット
+    LOSSCUT_1: float = -25.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.5  # ドローダウン利確の最大比率（これを超えたら利確）
-    DD_THRESHOLD: float = 20.0  # ドローダウン利確を始める閾値
+    DD_THRESHOLD: float = 30.0  # ドローダウン利確を始める閾値
 
     # 報酬・ペナルティ系
     RATIO_PROFIT_HOLD: float = 0.01  # HOLD（建玉あり）時の含み損益からの報酬比率

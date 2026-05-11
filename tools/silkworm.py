@@ -59,7 +59,7 @@ class SilkWorm:
             sns.scatterplot(data=self.df, x=factor, y="pnl", ax=ax)
 
             positions = sorted(list(self.df[factor].unique()))
-            labels = [str(int(x)) for x in positions]
+            labels = [str(int(x)) if x > 1 else x for x in positions]
             plt.xticks(positions, labels)
 
             ax.plot(
@@ -121,7 +121,7 @@ class SilkWorm:
             sns.scatterplot(data=df, x=factor, y="total", ax=ax)
 
             positions = sorted(list(df[factor].unique()))
-            labels = [str(int(x)) for x in positions]
+            labels = [str(int(x)) if x > 1 else x for x in positions]
             plt.xticks(positions, labels)
 
             ax.plot(
@@ -129,7 +129,7 @@ class SilkWorm:
                 [df[df[factor] == x]["total"].mean() for x in positions]
             )
 
-            ax.set_xlabel(f"{factor}, n={self.n_doe}")
+            ax.set_xlabel(f"{factor}, n={len(df)}")
             ax.set_ylabel("Total PnL")
             ax.grid(axis="y")
             plt.tight_layout()

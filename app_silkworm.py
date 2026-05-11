@@ -14,5 +14,5 @@ if __name__ == "__main__":
     df = pd.read_csv(csv_result)
     obj = SilkWorm(name_doe, df)
     # obj.mulreg()
-    # obj.main_effect()
+    obj.main_effect()
     obj.ranking()

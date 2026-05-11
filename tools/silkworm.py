@@ -59,7 +59,7 @@ class SilkWorm:
             sns.scatterplot(data=self.df, x=factor, y="pnl", ax=ax)
 
             positions = sorted(list(self.df[factor].unique()))
-            labels = [str(int(x)) if x > 1 else x for x in positions]
+            labels = [str(int(x)) if abs(x) > 1 else f"{x:.2f}" for x in positions]
             plt.xticks(positions, labels)
 
             ax.plot(
@@ -121,7 +121,7 @@ class SilkWorm:
             sns.scatterplot(data=df, x=factor, y="total", ax=ax)
 
             positions = sorted(list(df[factor].unique()))
-            labels = [str(int(x)) if x > 1 else x for x in positions]
+            labels = [str(int(x)) if abs(x) > 1 else f"{x:.2f}" for x in positions]
             plt.xticks(positions, labels)
 
             ax.plot(

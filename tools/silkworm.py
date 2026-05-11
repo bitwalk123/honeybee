@@ -102,6 +102,44 @@ class SilkWorm:
             rows.append(row)
 
         # 最後に DataFrame 化
-        df_ranking = pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+
+        # Matplotlib の共通設定
+        FONT_PATH = "fonts/RictyDiminished-Regular.ttf"
+        fm.fontManager.addfont(FONT_PATH)
+
+        # FontPropertiesオブジェクト生成（名前の取得のため）
+        font_prop = fm.FontProperties(fname=FONT_PATH)
+        font_prop.get_name()
+
+        plt.rcParams["font.family"] = font_prop.get_name()
+
+        for factor in self.list_factor_doe:
+            # フィギュアと軸の準備
+            fig, ax = plt.subplots(figsize=(3, 2))
+            # 散布図を描画
+            sns.scatterplot(data=df, x=factor, y="total", ax=ax)
+
+            positions = sorted(list(df[factor].unique()))
+            labels = [str(int(x)) for x in positions]
+            plt.xticks(positions, labels)
+
+            ax.plot(
+                positions,
+                [df[df[factor] == x]["total"].mean() for x in positions]
+            )
+
+            ax.set_xlabel(f"{factor}, n={self.n_doe}")
+            ax.set_ylabel("Total PnL")
+            ax.grid(axis="y")
+            plt.tight_layout()
+
+            name_img = os.path.join("doe", self.name_doe, f"total_effect_{factor}.png")
+            print(name_img)
+            plt.savefig(name_img)
+            plt.show()
+
+        df_ranking = df.sort_values('total', ascending=False, ignore_index=True)
         with pd.option_context('display.max_rows', None, 'display.max_columns', None):
             print(df_ranking)
+

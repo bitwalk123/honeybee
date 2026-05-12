@@ -87,8 +87,8 @@ class Gnat:
         plot_main(ax[i], df, title)
 
         # MA乖離率
-        #i += 1
-        #plot_diff_ma(ax[i], df)
+        # i += 1
+        # plot_diff_ma(ax[i], df)
 
         # VWAP乖離率
         i += 1

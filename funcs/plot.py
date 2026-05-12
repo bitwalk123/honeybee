@@ -66,7 +66,7 @@ def plot_main(ax, df, title):
     ax.set_title(title)
     ax.plot(df["price"], color="black", alpha=0.25, linewidth=0.5, zorder=20, label="株価")
     ax.plot(df["ma1"], linewidth=0.75, zorder=30, label="MA1")
-    ax.plot(df["ma2"], linewidth=0.75, zorder=30, label="MA2")
+    # ax.plot(df["ma2"], linewidth=0.75, zorder=30, label="MA2")
     ax.plot(df["vwap"], linewidth=0.75, zorder=30, label="VWAP")
     ax.set_ylabel("株価")
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))

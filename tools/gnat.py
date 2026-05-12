@@ -66,9 +66,9 @@ class Gnat:
 
         plt.rcParams["font.family"] = font_prop.get_name()
 
-        fig = plt.figure(figsize=(6.8, 6))
+        fig = plt.figure(figsize=(6.8, 5))
         ax = dict()
-        n = 5
+        n = 4
         gs = fig.add_gridspec(
             n, 1,
             wspace=0.0, hspace=0.0,
@@ -87,8 +87,8 @@ class Gnat:
         plot_main(ax[i], df, title)
 
         # MA乖離率
-        i += 1
-        plot_diff_ma(ax[i], df)
+        #i += 1
+        #plot_diff_ma(ax[i], df)
 
         # VWAP乖離率
         i += 1

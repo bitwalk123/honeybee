@@ -6,7 +6,6 @@ import re
 from tools.gnat import Gnat
 
 if __name__ == "__main__":
-
     obj = Gnat({})
 
     # 学習に使用するティックデータ
@@ -18,7 +17,7 @@ if __name__ == "__main__":
     print(file_excel)
     obj.run(file_excel)
     if m := re.search(r"(\d{4})(\d{2})(\d{2})", file_excel):
-        path_date = os.path.join(*m.groups())
+        path_date = str(os.path.join(*m.groups()))
     else:
         path_date = "0000/00/00"
     obj.plot(path_date)

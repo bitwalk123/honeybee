@@ -140,6 +140,7 @@ class SilkWorm:
             plt.show()
 
         df_ranking = df.sort_values('total', ascending=False, ignore_index=True)
+        df_ranking.to_csv(os.path.join("doe", self.name_doe, "ranking_total.csv"), index=False)
         with pd.option_context('display.max_rows', None, 'display.max_columns', None):
             print(df_ranking)
 

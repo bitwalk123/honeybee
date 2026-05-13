@@ -12,7 +12,7 @@ from funcs.plot import (
     plot_diff_ma,
     plot_diff_vwap,
     plot_main,
-    plot_profit, plot_momentum,
+    plot_profit, plot_momentum, plot_dd_ratio, plot_cross,
 )
 from funcs.tide import get_tse_x_range
 
@@ -66,13 +66,14 @@ class Gnat:
 
         plt.rcParams["font.family"] = font_prop.get_name()
 
-        fig = plt.figure(figsize=(6.8, 5))
+        fig = plt.figure(figsize=(6.8, 7))
         ax = dict()
-        n = 4
+        n = 7
+        list_height = [2, 1, 1, 1, 1, 0.5, 0.5]
         gs = fig.add_gridspec(
             n, 1,
             wspace=0.0, hspace=0.0,
-            height_ratios=[2 if i == 0 else 1 for i in range(n)]
+            height_ratios=list_height
         )
         for i, axis in enumerate(gs.subplots(sharex="col")):
             ax[i] = axis
@@ -98,9 +99,21 @@ class Gnat:
         i += 1
         plot_momentum(ax[i], df)
 
+        # DD ratio
+        i += 1
+        plot_dd_ratio(ax[i], df)
+
         # 含み損益
         i += 1
         plot_profit(ax[i], df)
+
+        # VWAP golden cross
+        i += 1
+        plot_cross(ax[i], df, "vwap_gc")
+
+        # VWAP dead cross
+        i += 1
+        plot_cross(ax[i], df, "vwap_dc")
 
         ax[i].set_xlabel(xlabel)
 

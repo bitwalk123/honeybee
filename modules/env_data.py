@@ -26,7 +26,7 @@ class EnvData:
     PERIOD_MOM: int = 300  # モメンタムの期間
     # ロスカット・利確系
     N_MINUS_MAX: int = 900  # 連続含み損の最大カウント数
-    N_POSITION_MIN: int = 300  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
+    N_POSITION_MIN: int = 30  # 建玉を保持する最小カウント数（含み益がある限りドローダウンより優先）
     LOSSCUT_1: float = -50.0  # 単純ロスカット
     DD_RATIO_MAX: float = 0.75  # ドローダウン利確の最大比率（これを超えたら利確）
     DD_THRESHOLD: float = 10.0  # ドローダウン利確を始める閾値
@@ -143,10 +143,7 @@ class EnvData:
             raise TypeError(f"Unknown ActionType: {type_action}!")
 
     def check_valid_repayment(self) -> bool:
-        if -5 < self.profit:
-            return False
-        else:
-            return True
+        return True
 
     def inc_row(self):
         self.row += 1
@@ -272,6 +269,8 @@ class EnvData:
             "diff_vwap": self.diff_vwap,
             "n_trade": self.n_trade,
             "count_negative": self.count_negative,
+            "vwap_gc": self.is_vwap_golden_cross(),
+            "vwap_dc": self.is_vwap_dead_cross(),
         }
 
     def is_losscut(self) -> bool:
@@ -389,7 +388,8 @@ class EnvData:
             self.profit_max = self.profit
 
     def update_dd_ratio(self) -> float:
-        if 0 < self.profit and 0 < self.profit_max:
+        # if 0 < self.profit and 0 < self.profit_max:
+        if self.DD_THRESHOLD < self.profit_max:
             self.dd_ratio = (self.profit_max - self.profit) / self.profit_max
         else:
             self.dd_ratio = 0.0
@@ -397,8 +397,8 @@ class EnvData:
         return self.dd_ratio
 
     def does_take_profit(self) -> bool:
-        if self.DD_THRESHOLD < self.profit and self.DD_RATIO_MAX < self.update_dd_ratio():
-        # if self.DD_THRESHOLD < self.profit and max(0.5, self.DD_THRESHOLD / self.profit_max) < self.update_dd_ratio():
+        if self.DD_THRESHOLD < self.profit_max and self.DD_RATIO_MAX < self.update_dd_ratio():
+            # if self.DD_THRESHOLD < self.profit and max(0.5, self.DD_THRESHOLD / self.profit_max) < self.update_dd_ratio():
             return True
         else:
             return False

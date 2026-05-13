@@ -112,3 +112,16 @@ def plot_profit(ax, df):
     ax.fill_between(x, 0, y1, where=(y1 < 0), fc="#bbf", ec="#00f", alpha=0.5, lw=0.5, zorder=20, label="含み損")
     ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
     ax.set_ylabel("含み損益")
+
+
+def plot_dd_ratio(ax, df):
+    ax.plot(df["dd_ratio"], linewidth=0.75, alpha=0.5, zorder=20)
+    # ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel("DD ratio")
+
+def plot_cross(ax, df, colname:str):
+    ax.plot(df[colname], color="red", linewidth=1, alpha=1, zorder=20)
+    # ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.set_ylim(0, 1)
+    ax.set_ylabel(colname.replace("_", "\n"))

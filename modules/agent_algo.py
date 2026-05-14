@@ -32,9 +32,9 @@ class AlgoAgent:
         while not episode_over:
             # マスク情報付きで推論
             action_masks = env.action_masks()
-            action, _states = model.predict(obs, action_masks=action_masks)
+            action, states = model.predict(obs, action_masks=action_masks)
             # 環境でステップ処理
-            obs, reward, terminated, truncated, info = env.step(action)
+            obs, reward, terminated, truncated, info = env.step(action, states)
             episode_over = terminated or truncated
             if "technical" in info:
                 d = info["technical"]

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import gymnasium as gym
 import numpy as np
 import pandas as pd
@@ -20,6 +22,9 @@ class TrainingEnv(gym.Env):
         self.df_tick: pd.DataFrame = df_tick
         self.dict_setting = dict_setting
         self.render_mode = render_mode
+
+        # step メソッドで渡される状態辞書
+        self.states: dict = {}
 
         # データクラスのインスタンスを定義
         if self.dict_setting is None:
@@ -267,8 +272,18 @@ class TrainingEnv(gym.Env):
         self.posman.initPosition([self.CODE])
 
     def position_open(self, action_type: ActionType) -> float:
+        """
+        ポジションのオープン
+        :param action_type:
+        :return:
+        """
+        if "reason" in self.states:
+            note = self.states["reason"]
+        else:
+            note = ""
+
         self.s.position = self.posman.openPosition(
-            self.CODE, self.s.ts, self.s.price, action_type
+            self.CODE, self.s.ts, self.s.price, action_type, note
         )
         self.s.n_trade += 1  # 取引回数の更新
         self.s.reset_profit_pre()  # 一つ前の含み益のリセット
@@ -281,9 +296,13 @@ class TrainingEnv(gym.Env):
 
     def position_close(self, note="") -> float:
         """
-        ポジション・クローズ
+        ポジションのクローズ
+        :param note:
         :return:
         """
+        if "reason" in self.states and note == "":
+            note = self.states["reason"]
+
         # ポジション管理
         self.s.position = self.posman.closePosition(
             self.CODE, self.s.ts, self.s.price, note=note
@@ -350,12 +369,18 @@ class TrainingEnv(gym.Env):
         info = {}  # Additional debug info
         return obs, info
 
-    def step(self, action):
+    def step(self, action, states: dict = None) -> Tuple[dict, float, bool, bool, dict]:
         """
-        ステップ処理
+        環境のステップ処理
         :param action:
+        :param states:
         :return:
         """
+        # アクションの理由
+        if states is None:
+            self.states = {}
+        else:
+            self.states = states
         # ====== データフレームからデータを一行分取得 ======
         self.get_data()
         # 含み損益の取得

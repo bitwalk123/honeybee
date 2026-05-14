@@ -36,9 +36,9 @@ class AlgoModel:
             return ActionType.SELL.value, {'reason': 'ma_dead_cross'}
         """
         if vwap_cross_golden == 1.0 and self.can_execute(ActionType.BUY.value, action_masks):
-            return ActionType.BUY.value, {'reason': 'vwap_golden_cross'}
+            return ActionType.BUY.value, {"reason": "VWAP ゴールデンクロス"}
         if vwap_cross_dead == 1.0 and self.can_execute(ActionType.SELL.value, action_masks):
-            return ActionType.SELL.value, {'reason': 'vwap_dead_cross'}
+            return ActionType.SELL.value, {"reason": "VWAP デッドクロス"}
         return ActionType.HOLD.value, {}
         #else:
         #    return ActionType.HOLD.value, {}

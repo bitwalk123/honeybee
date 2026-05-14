@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import pandas as pd
 
 from modules.env_training import TrainingEnv
@@ -21,7 +23,7 @@ class InferenceEnv(TrainingEnv):
             bool: 強制決済を実行した場合True
         """
         # 1. 利確判定
-        #if self.s.does_take_profit() and self.s.N_POSITION_MIN < self.s.count_post_contract:
+        # if self.s.does_take_profit() and self.s.N_POSITION_MIN < self.s.count_post_contract:
         if self.s.does_take_profit():
             self.position_close_force(note="ドローダウン利確")
             return True
@@ -90,12 +92,18 @@ class InferenceEnv(TrainingEnv):
             # ショートポジション保有時に売りアクション → ルール違反
             raise RuntimeError("Trade rule violation: Cannot SELL while holding SHORT position!")
 
-    def step(self, action):
+    def step(self, action, states: dict = None) -> Tuple[dict, float, bool, bool, dict]:
         """
-        ステップ処理
+        環境のステップ処理
         :param action:
+        :param states:
         :return:
         """
+        # アクションの理由
+        if states is None:
+            self.states = {}
+        else:
+            self.states = states
         # ====== データフレームからデータを一行分取得 ======
         self.get_data()
         # 含み損益の取得

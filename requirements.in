@@ -25,6 +25,7 @@ cycler
 debugpy
 decorator
 defusedxml
+distlib
 et_xmlfile
 executing
 Farama-Notifications
@@ -106,6 +107,7 @@ pexpect
 pillow
 pip-chill
 pip-review
+pipenv
 platformdirs
 prometheus_client
 prompt_toolkit
@@ -117,6 +119,7 @@ pycparser
 Pygments
 pyparsing
 python-dateutil
+python-discovery
 python-json-logger
 pytokens
 PyYAML
@@ -153,6 +156,7 @@ typing_extensions
 tzdata
 uri-template
 urllib3
+virtualenv
 wcwidth
 webcolors
 webencodings

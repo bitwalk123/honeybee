@@ -1,4 +1,3 @@
-import datetime
 from collections import defaultdict
 from dataclasses import dataclass, field
 
@@ -191,6 +190,7 @@ class EnvData:
         日毎に生じる絶対値のズレを少しでも抑えたい。
         そのため、株価に関連する特徴量に対して、始値で割っている。
         """
+        # ザラバデータ（生データに近い）
         market = np.array(
             [
                 self.ma1 / self.price_open if self.price_open > 0 else 1.0,  # 1. MA1（短周期移動平均）
@@ -205,7 +205,7 @@ class EnvData:
             ],
             dtype=np.float32
         )
-
+        # クロス判定できるデータ
         cross = np.array(
             [
                 self.diff_ma,
@@ -214,21 +214,22 @@ class EnvData:
             ],
             dtype=np.float32
         )
-
+        # シグナル・フラグ（クロスしたタイミングなど）
         signal = np.array([
             self.is_ma_golden_cross(),
             self.is_ma_dead_cross(),
             self.is_vwap_golden_cross(),
             self.is_vwap_dead_cross(),
         ])
+        # ポジション情報
         position = position_to_onehot(self.position)
-        obs = {
+        # 辞書形式で返す
+        return {
             "market": market,
             "cross": cross,
             "signal": signal,
             "position": position,
         }
-        return obs
 
     def get_n_trade_reward(self) -> float:
         # 約定回数に応じた報酬（n で極大, r_max が最高報酬）
@@ -388,7 +389,6 @@ class EnvData:
             self.profit_max = self.profit
 
     def update_dd_ratio(self) -> float:
-        # if 0 < self.profit and 0 < self.profit_max:
         if self.DD_THRESHOLD < self.profit_max:
             self.dd_ratio = (self.profit_max - self.profit) / self.profit_max
         else:
@@ -397,8 +397,7 @@ class EnvData:
         return self.dd_ratio
 
     def does_take_profit(self) -> bool:
-        if self.DD_THRESHOLD < self.profit_max and self.DD_RATIO_MAX < self.update_dd_ratio():
-            # if self.DD_THRESHOLD < self.profit and max(0.5, self.DD_THRESHOLD / self.profit_max) < self.update_dd_ratio():
+        if self.DD_RATIO_MAX < self.update_dd_ratio():
             return True
         else:
             return False

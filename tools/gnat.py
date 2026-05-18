@@ -79,7 +79,7 @@ class Gnat:
             ax[i] = axis
             ax[i].grid()
             for t in df_trans.index:
-                ax[i].axvline(x=t, color="red", linewidth=0.25, zorder=100)
+                ax[i].axvline(x=t, color="red", linewidth=0.5, zorder=100)
 
         # 株価
         i = 0

@@ -239,6 +239,9 @@ class TrainingEnv(gym.Env):
         row = self.df_tick.iloc[0][list_name]
         self.s.set_data_open(row)
 
+    def get_dd_ratio_max(self) -> float:
+        return self.s.DD_RATIO_MAX
+
     def get_reward_cross_ma_dead(self):
         return self.df_tick.iloc[self.s.row][self.s.COL_CROSS_MA_DEAD]
 

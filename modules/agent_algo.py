@@ -8,13 +8,14 @@ from modules.model_algo import AlgoModel
 class AlgoAgent:
     def __init__(self, code: str, ) -> None:
         self.code: str = code
+        self.env: InferenceEnv | None = None
 
     def infer(self, file_excel: str, dict_setting: dict | None = None) -> tuple:
         # 指定銘柄コードのティックデータのデータフレームを取得
         df = get_excel_sheet(file_excel, self.code)
 
         # 1. 環境クラス継承の推論用環境クラスのインスタンス
-        env = InferenceEnv(self.code, df, dict_setting)
+        self.env = env = InferenceEnv(self.code, df, dict_setting)
 
         # 2. アルゴリズム・モデル
         model = AlgoModel()
@@ -48,3 +49,6 @@ class AlgoAgent:
         # 環境の終了処理
         env.close()
         return dict_result, dict_technical
+
+    def get_dd_ratio_max(self) -> float:
+        return self.env.get_dd_ratio_max()

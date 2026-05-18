@@ -101,7 +101,7 @@ class Gnat:
 
         # DD ratio
         i += 1
-        plot_dd_ratio(ax[i], df)
+        plot_dd_ratio(ax[i], df, self.agent.get_dd_ratio_max())
 
         # 含み損益
         i += 1

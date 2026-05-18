@@ -114,13 +114,14 @@ def plot_profit(ax, df):
     ax.set_ylabel("含み損益")
 
 
-def plot_dd_ratio(ax, df):
+def plot_dd_ratio(ax, df, threshold: float):
     ax.plot(df["dd_ratio"], linewidth=1, alpha=1, zorder=20)
-    # ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
+    ax.axhline(y=threshold, color="red", linewidth=0.75, alpha=0.5, zorder=10)
     ax.set_ylim(0, 1)
     ax.set_ylabel("DD ratio")
 
-def plot_cross(ax, df, colname:str):
+
+def plot_cross(ax, df, colname: str):
     ax.plot(df[colname], color="red", linewidth=1, alpha=1, zorder=20)
     # ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
     ax.set_ylim(0, 1)

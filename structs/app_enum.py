@@ -1,7 +1,7 @@
-from enum import IntEnum
+from enum import IntEnum, Enum
 
 
-class ActionType(IntEnum):
+class ActionType(Enum):
     HOLD = 0
     BUY = 1
     SELL = 2

@@ -115,9 +115,9 @@ def plot_profit(ax, df):
 
 
 def plot_dd_ratio(ax, df):
-    ax.plot(df["dd_ratio"], linewidth=0.75, alpha=0.5, zorder=20)
+    ax.plot(df["dd_ratio"], linewidth=1, alpha=1, zorder=20)
     # ax.axhline(y=0, color="black", linewidth=0.75, alpha=0.25, zorder=10)
-    ax.set_ylim(0, 1)
+    #ax.set_ylim(0, 1)
     ax.set_ylabel("DD ratio")
 
 def plot_cross(ax, df, colname:str):

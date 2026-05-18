@@ -122,7 +122,9 @@ class EnvData:
         :param type_action:
         :return:
         """
+        """
         if type_action == ActionType.BUY:
+            print(self.diff_vwap_pre, self.diff_vwap)
             if 0 <= self.diff_vwap and self.diff_vwap_pre < self.diff_vwap:
                 return True
             elif 0 <= self.diff_ma and self.diff_ma_pre < self.diff_ma:
@@ -140,6 +142,8 @@ class EnvData:
                 return False
         else:
             raise TypeError(f"Unknown ActionType: {type_action}!")
+        """
+        return True
 
     def check_valid_repayment(self) -> bool:
         return True
@@ -265,7 +269,7 @@ class EnvData:
             "momentum": self.mom,
             "profit": self.profit,
             "profit_max": self.profit_max,
-            "dd_ratio": self.update_dd_ratio(),
+            "dd_ratio": self.dd_ratio,
             "diff_ma": self.diff_ma,
             "diff_vwap": self.diff_vwap,
             "n_trade": self.n_trade,
@@ -376,6 +380,8 @@ class EnvData:
         self.diff_vwap_pre = self.diff_vwap
         self.rsi_pre = self.rsi
         self.mom_pre = self.mom
+        if self.position == PositionType.NONE:
+            self.dd_ratio = 0.0
 
     def reset_profit_max(self):
         self.profit_max = 0.0

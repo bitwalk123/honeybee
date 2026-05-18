@@ -56,7 +56,6 @@ class InferenceEnv(TrainingEnv):
         action_type = ActionType(action)
         if action_type == ActionType.HOLD:
             return
-
         if action_type == ActionType.BUY:
             self._handle_buy_action()
         elif action_type == ActionType.SELL:
@@ -100,10 +99,11 @@ class InferenceEnv(TrainingEnv):
         :return:
         """
         # アクションの理由
-        if states is None:
+        if states is None or states == {}:
             self.states = {}
         else:
             self.states = states
+            # print(states)
         # ====== データフレームからデータを一行分取得 ======
         self.get_data()
         # 含み損益の取得

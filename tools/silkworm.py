@@ -55,7 +55,7 @@ class SilkWorm:
 
         for factor in self.list_factor_doe:
             # フィギュアと軸の準備
-            fig, ax = plt.subplots(figsize=(2, 2))
+            fig, ax = plt.subplots(figsize=(2, 1.8))
             # 散布図を描画
             sns.scatterplot(data=self.df, x=factor, y="pnl", ax=ax)
 
@@ -117,7 +117,7 @@ class SilkWorm:
 
         for factor in self.list_factor_doe:
             # フィギュアと軸の準備
-            fig, ax = plt.subplots(figsize=(2, 2))
+            fig, ax = plt.subplots(figsize=(2, 1.8))
             # 散布図を描画
             sns.scatterplot(data=df, x=factor, y="total", ax=ax)
 

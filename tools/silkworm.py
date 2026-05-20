@@ -45,6 +45,7 @@ class SilkWorm:
         # Matplotlib の共通設定
         FONT_PATH = "fonts/RictyDiminished-Regular.ttf"
         fm.fontManager.addfont(FONT_PATH)
+        plt.rcParams["font.size"] = 7
 
         # FontPropertiesオブジェクト生成（名前の取得のため）
         font_prop = fm.FontProperties(fname=FONT_PATH)
@@ -54,7 +55,7 @@ class SilkWorm:
 
         for factor in self.list_factor_doe:
             # フィギュアと軸の準備
-            fig, ax = plt.subplots(figsize=(3, 2))
+            fig, ax = plt.subplots(figsize=(2, 2))
             # 散布図を描画
             sns.scatterplot(data=self.df, x=factor, y="pnl", ax=ax)
 
@@ -116,7 +117,7 @@ class SilkWorm:
 
         for factor in self.list_factor_doe:
             # フィギュアと軸の準備
-            fig, ax = plt.subplots(figsize=(3, 2))
+            fig, ax = plt.subplots(figsize=(2, 2))
             # 散布図を描画
             sns.scatterplot(data=df, x=factor, y="total", ax=ax)
 

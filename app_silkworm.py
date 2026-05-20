@@ -6,7 +6,7 @@ import pandas as pd
 from tools.silkworm import SilkWorm
 
 if __name__ == "__main__":
-    name_doe = "doe-005"
+    name_doe = "doe-006"
 
     csv_result = os.path.join("doe", name_doe, "result.csv")  # 結果用
     # 解析対象ファイル
@@ -16,3 +16,9 @@ if __name__ == "__main__":
     # obj.mulreg()
     obj.main_effect()
     obj.ranking()
+
+    list_file_excel = sorted(list(set(df["file"])))
+    print(list_file_excel[0])
+    print(list_file_excel[-1])
+    print(f"{len(list_file_excel)} days")
+

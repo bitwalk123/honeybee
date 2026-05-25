@@ -244,8 +244,8 @@ class Momentum:
         self.queue.append(value)
 
         # キューがwindow_sizeに達するまでは0を返す
-        if len(self.queue) < self.window_size:
-            return self.momentum
+        #if len(self.queue) < self.window_size:
+        #    return self.momentum
 
         # window_sizeを超えたら古い値を削除
         if len(self.queue) > self.window_size:
